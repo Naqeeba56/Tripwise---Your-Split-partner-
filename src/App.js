@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
   Plus,
-  Wallet,
   ArrowRight,
   CheckCircle2,
   Receipt,
@@ -24,17 +23,13 @@ import {
   UserCheck,
   Image as ImageIcon,
   Camera,
-  Lock,
   LogOut,
   Share2,
   Copy,
   Sparkles,
-  AlertCircle,
-  X,
   Clock,
   CreditCard,
   Hash,
-  Heart,
 } from "lucide-react";
 
 // --- FIREBASE IMPORTS ---
@@ -44,11 +39,7 @@ import {
   collection,
   doc,
   setDoc,
-  getDoc,
   onSnapshot,
-  getDocs,
-  query,
-  where,
   deleteDoc,
 } from "firebase/firestore";
 
@@ -1127,14 +1118,11 @@ export default function App() {
                 <HandCoins className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" />
               </div>
 
-              {/* Flex direction changes: Mobile = flex-col (below), Desktop = flex-row (side by side) */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3.5 min-w-0">
-                {/* Prominent, Larger Tripwise Title */}
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent truncate leading-tight">
                   Tripwise
                 </h1>
 
-                {/* Trip Glass Dropdown */}
                 <div className="mt-0.5 sm:mt-0">
                   <GlassTripDropdown
                     trips={trips}
@@ -1234,7 +1222,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Navigation Tabs (Scrollable on Mobile) */}
+          {/* Navigation Tabs */}
           <div className="max-w-6xl mx-auto px-3 sm:px-6 flex border-t border-slate-200/60 dark:border-slate-800/60 overflow-x-auto no-scrollbar">
             {[
               { id: "dashboard", label: "Dashboard", icon: PieChart },
@@ -1498,7 +1486,6 @@ export default function App() {
                           className="flex flex-col p-3.5 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 shadow-sm transition-all gap-3.5"
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-                            {/* Debtor to Creditor visual block */}
                             <div className="flex items-center justify-around sm:justify-start space-x-3 sm:space-x-4">
                               <div className="flex flex-col items-center gap-1 min-w-[60px]">
                                 {fromAvatar ? (
@@ -1542,7 +1529,6 @@ export default function App() {
                               </div>
                             </div>
 
-                            {/* Settlement Action & Amount */}
                             <div className="flex items-center justify-between sm:justify-end space-x-4 pt-2 sm:pt-0 border-t sm:border-0 border-slate-200/60 dark:border-slate-800/60">
                               <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400">
                                 ₹{s.amount.toLocaleString()}
@@ -1913,54 +1899,50 @@ export default function App() {
         </AnimatePresence>
 
         {/* FOOTER SECTION */}
-       <footer className="mt-12 sm:mt-20 border-t border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
-  <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-    <div className="flex flex-col items-center justify-center text-center space-y-4">
-      
-      {/* Brand Info */}
-      <div className="flex flex-col items-center space-y-2 w-full">
-        <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-2.5 rounded-2xl shadow-md shadow-teal-500/20 text-slate-950">
-          <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-        </div>
-        <div className="w-full overflow-hidden">
-          <h3 className="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent">
-            Tripwise
-          </h3>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap mt-1">
-            Smart group expense splitting &amp; instant settlement tracking.
-          </p>
-        </div>
-      </div>
+        <footer className="mt-12 sm:mt-20 border-t border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="flex flex-col items-center justify-center text-center space-y-4">
+              <div className="flex flex-col items-center space-y-2 w-full">
+                <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-2.5 rounded-2xl shadow-md shadow-teal-500/20 text-slate-950">
+                  <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+                </div>
+                <div className="w-full overflow-hidden">
+                  <h3 className="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent">
+                    Tripwise
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap mt-1">
+                    Smart group expense splitting &amp; instant settlement tracking.
+                  </p>
+                </div>
+              </div>
 
-      {/* Attribution / Copyright */}
-      <div className="pt-1">
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 flex-wrap">
-          <span>&copy; 2026 <strong className="text-slate-800 dark:text-slate-200">Mohd Naqeeb</strong>. All rights reserved.</span>
-          <span className="hidden sm:inline">|</span>
-          <span className="flex items-center gap-1">
-            Connect on
-            <a
-              href="https://www.linkedin.com/in/your-linkedin-profile"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="LinkedIn Profile"
-              className="inline-flex items-center text-slate-600 dark:text-slate-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="w-4 h-4 fill-current" 
-                viewBox="0 0 24 24"
-              >
-                <path d="M4.983 2.821a2.188 2.188 0 1 0 0 4.376 2.188 2.188 0 1 0 0-4.376M9.237 8.855v12.139h3.769v-6.003c0-1.584.298-3.118 2.262-3.118 1.937 0 1.961 1.811 1.961 3.218v5.904H21v-6.657c0-3.27-.704-5.783-4.526-5.783-1.835 0-3.065 1.007-3.568 1.96h-.051v-1.66zm-6.142 0H6.87v12.139H3.095z"/>
-              </svg>
-            </a>
-          </span>
-        </p>
-      </div>
-
-    </div>
-  </div>
-</footer>
+              <div className="pt-1">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 flex-wrap">
+                  <span>&copy; 2026 <strong className="text-slate-800 dark:text-slate-200">Mohd Naqeeb</strong>. All rights reserved.</span>
+                  <span className="hidden sm:inline">|</span>
+                  <span className="flex items-center gap-1">
+                    Connect on
+                    <a
+                      href="https://www.linkedin.com/in/your-linkedin-profile"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="LinkedIn Profile"
+                      className="inline-flex items-center text-slate-600 dark:text-slate-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="w-4 h-4 fill-current" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M4.983 2.821a2.188 2.188 0 1 0 0 4.376 2.188 2.188 0 1 0 0-4.376M9.237 8.855v12.139h3.769v-6.003c0-1.584.298-3.118 2.262-3.118 1.937 0 1.961 1.811 1.961 3.218v5.904H21v-6.657c0-3.27-.704-5.783-4.526-5.783-1.835 0-3.065 1.007-3.568 1.96h-.051v-1.66zm-6.142 0H6.87v12.139H3.095z"/>
+                      </svg>
+                    </a>
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

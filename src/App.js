@@ -48,6 +48,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
 
 // --- FIREBASE CONFIGURATION ---
@@ -105,7 +107,7 @@ const INITIAL_TRIPS = [
     id: "1",
     name: "Goa Trip 2026",
     image:
-      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?q=80&w=1600&auto=format&fit=crop",
     createdBy: "public",
     creatorName: "Naqeeb",
     creatorUpi: "naqeeb@upi",
@@ -168,6 +170,8 @@ const compressImage = (file, maxWidth, quality, callback) => {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, width, height);
       const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
       callback(compressedDataUrl);
@@ -654,6 +658,17 @@ export default function App() {
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
+    // Handle redirect result for mobile browsers where popup fails
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect login error:", error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoadingAuth(false);
@@ -733,20 +748,18 @@ function MainDashboardApp({ user: firebaseUser }) {
     setAuthLoading(true);
     setAppError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      setUserProfile({
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName || "Naqeeb",
-        photoURL: user.photoURL,
-      });
-      setIsAdmin(true);
+      // Use popup first; if it fails on restricted mobile webviews, fallback to redirect
+      await signInWithPopup(auth, googleProvider);
       setAuthLoading(false);
     } catch (error) {
-      console.error("Error signing in with Google:", error);
-      setAppError(error.message || "Failed to sign in with Google.");
-      setAuthLoading(false);
+      console.warn("Popup sign-in blocked or failed, attempting redirect method...", error);
+      try {
+        await signInWithRedirect(auth, googleProvider);
+      } catch (redirectError) {
+        console.error("Error signing in with Google redirect:", redirectError);
+        setAppError(redirectError.message || "Failed to sign in with Google.");
+        setAuthLoading(false);
+      }
     }
   };
 
@@ -955,7 +968,7 @@ function MainDashboardApp({ user: firebaseUser }) {
   const handleCompressedImageUpload = (e, setPicState) => {
     const file = e.target.files[0];
     if (file) {
-      compressImage(file, 400, 0.6, (compressedBase64) => {
+      compressImage(file, 1600, 0.85, (compressedBase64) => {
         setPicState(compressedBase64);
       });
     }
@@ -1219,16 +1232,16 @@ function MainDashboardApp({ user: firebaseUser }) {
         }
       `}</style>
 
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300 pb-20">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300 pb-20 overflow-x-hidden">
         <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
-          <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3 flex items-center justify-between gap-2">
-            <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
-              <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2.5 sm:p-3 rounded-2xl shadow-lg shadow-teal-500/20 text-slate-950 flex-shrink-0">
-                <HandCoins className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" />
+          <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-3.5 min-w-0">
+              <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-3 rounded-2xl shadow-lg shadow-teal-500/20 text-slate-950 flex-shrink-0">
+                <HandCoins className="w-5 h-5 sm:w-7 sm:h-7 stroke-[2.5]" />
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3.5 min-w-0">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent truncate leading-tight">
+                <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent truncate leading-tight">
                   Tripwise
                 </h1>
 
@@ -1244,60 +1257,61 @@ function MainDashboardApp({ user: firebaseUser }) {
               </div>
             </div>
 
-            <div className="flex items-center space-x-1.5 sm:space-x-2.5 flex-shrink-0">
+            <div className="flex items-center space-x-1.5 sm:space-x-2.5 flex-shrink-0 ml-auto sm:ml-0">
               <button
                 onClick={() => setShowInviteModal(true)}
-                className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/40 text-slate-700 dark:text-slate-300 p-2 sm:px-3.5 sm:py-2 rounded-2xl text-xs sm:text-xs font-extrabold transition shadow-sm"
+                className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/40 text-slate-700 dark:text-slate-300 p-2 sm:px-3.5 sm:py-2 rounded-2xl text-xs font-extrabold transition shadow-sm"
                 title="Invite Friends"
               >
-                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-500" />
-                <span className="hidden sm:inline">Invite</span>
+                <Share2 className="w-3.5 h-3.5 text-teal-500" />
+                <span className="hidden md:inline">Invite</span>
               </button>
 
               {isAdmin && userProfile ? (
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 rounded-2xl">
+                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded-2xl">
                     {userProfile.photoURL ? (
                       <img
                         src={userProfile.photoURL}
                         alt={userProfile.name}
-                        className="w-6 h-6 rounded-full object-cover border border-teal-500/30"
+                        className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover border border-teal-500/30"
                       />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-[11px] flex items-center justify-center">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-[10px] flex items-center justify-center">
                         {userProfile.name[0]}
                       </div>
                     )}
-                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 hidden sm:inline">
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 hidden md:inline truncate max-w-[80px]">
                       {userProfile.name}
                     </span>
                   </div>
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center gap-1 px-3 py-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-xs font-bold transition shadow-sm"
+                    className="flex items-center gap-1 p-2 sm:px-3 sm:py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 rounded-xl text-xs font-bold transition shadow-sm"
+                    title="Sign Out"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Sign Out</span>
+                    <span className="hidden md:inline">Sign Out</span>
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={handleGoogleSignIn}
                   disabled={authLoading}
-                  className="flex items-center gap-2 px-3.5 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-xl text-xs font-extrabold transition shadow-md shadow-teal-500/10 disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-2.5 py-2 sm:px-3.5 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-xl text-xs font-extrabold transition shadow-md shadow-teal-500/10 disabled:opacity-50"
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  <span>{authLoading ? "Signing in..." : "Sign in with Google"}</span>
+                  <span className="truncate max-w-[100px] sm:max-w-none">{authLoading ? "Signing in..." : "Sign in"}</span>
                 </button>
               )}
 
               <button
                 onClick={() => setShowNewTripModal(true)}
-                className="flex items-center gap-1.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 p-2 sm:px-4 sm:py-2 rounded-2xl text-xs font-extrabold transition shadow-sm"
+                className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 p-2 sm:px-4 sm:py-2 rounded-2xl text-xs font-extrabold transition shadow-sm"
                 title="Create New Trip"
               >
-                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-                <span className="hidden sm:inline">New Trip</span>
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span className="hidden md:inline">New Trip</span>
               </button>
 
               <button
@@ -1305,9 +1319,9 @@ function MainDashboardApp({ user: firebaseUser }) {
                 className="p-2 sm:p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
               >
                 {darkMode ? (
-                  <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
                 ) : (
-                  <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <Moon className="w-3.5 h-3.5" />
                 )}
               </button>
             </div>
@@ -1360,21 +1374,23 @@ function MainDashboardApp({ user: firebaseUser }) {
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-3.5 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+        <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
           {currentTrip.image && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full h-36 sm:h-64 rounded-3xl sm:rounded-[2.5rem] overflow-hidden relative shadow-xl shadow-teal-500/5 group border border-slate-200/50 dark:border-slate-800/50"
+              className="w-full h-48 sm:h-72 md:h-80 rounded-3xl sm:rounded-[2.5rem] overflow-hidden relative shadow-xl shadow-teal-500/5 group border border-slate-200/50 dark:border-slate-800/50"
+              style={{ transform: "translateZ(0)" }}
             >
               <img
                 src={currentTrip.image}
                 alt={currentTrip.name}
-                className="w-full h-full object-cover transition duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover object-center transition duration-700 group-hover:scale-105"
+                style={{ imageRendering: "auto" }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent flex flex-col justify-end p-4 sm:p-8">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-teal-500/20 backdrop-blur-md text-teal-300 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider border border-teal-500/30">
+                  <span className="bg-teal-500/25 backdrop-blur-md text-teal-300 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider border border-teal-500/40">
                     Active Trip
                   </span>
                   <span className="text-[11px] sm:text-xs font-bold text-slate-300">
@@ -1401,396 +1417,419 @@ function MainDashboardApp({ user: firebaseUser }) {
             </div>
           )}
 
-          {activeTab === "dashboard" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
-              <div className="lg:col-span-5 space-y-4 sm:space-y-6">
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
-                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Total Spent
-                    </p>
-                    <h3 className="text-lg sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate">
-                      ₹{totalSpent.toLocaleString()}
-                    </h3>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
-                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Per Person
-                    </p>
-                    <h3 className="text-lg sm:text-3xl font-black text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate">
-                      ₹{Math.round(perPersonShare).toLocaleString()}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
-                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
-                    <Plus className="w-5 h-5 text-teal-500 stroke-[3]" />
-                    Add Expense
-                  </h2>
-
-                  <form
-                    onSubmit={handleAddExpense}
-                    className="space-y-3.5 sm:space-y-4"
-                  >
-                    <div>
-                      <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                        Expense Title
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Dinner, Fuel, Villa"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
-                      />
-
-                      <AnimatePresence>
-                        {appError && (
-                          <motion.span
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1 block animate-pulse"
-                          >
-                            ⚠️ {appError}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
+          <AnimatePresence mode="wait">
+            {activeTab === "dashboard" && (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8"
+              >
+                <div className="lg:col-span-5 space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Total Spent
+                      </p>
+                      <h3 className="text-lg sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate">
+                        ₹{totalSpent.toLocaleString()}
+                      </h3>
                     </div>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Per Person
+                      </p>
+                      <h3 className="text-lg sm:text-3xl font-black text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate">
+                        ₹{Math.round(perPersonShare).toLocaleString()}
+                      </h3>
+                    </div>
+                  </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
+                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
+                      <Plus className="w-5 h-5 text-teal-500 stroke-[3]" />
+                      Add Expense
+                    </h2>
+
+                    <form
+                      onSubmit={handleAddExpense}
+                      className="space-y-3.5 sm:space-y-4"
+                    >
                       <div>
                         <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                          Amount (₹)
+                          Expense Title
                         </label>
                         <input
-                          type="number"
-                          placeholder="0"
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
+                          type="text"
+                          placeholder="e.g. Dinner, Fuel, Villa"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
                           className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
                         />
+
+                        <AnimatePresence>
+                          {appError && (
+                            <motion.span
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1 block animate-pulse"
+                            >
+                              ⚠️ {appError}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                            Amount (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                            Paid By
+                          </label>
+                          <GlassMemberDropdown
+                            members={currentTrip.members || []}
+                            selectedMember={paidBy}
+                            onSelectMember={setPaidBy}
+                          />
+                        </div>
                       </div>
 
                       <div>
                         <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                          Paid By
+                          Category
                         </label>
-                        <GlassMemberDropdown
-                          members={currentTrip.members || []}
-                          selectedMember={paidBy}
-                          onSelectMember={setPaidBy}
+                        <GlassCategoryDropdown
+                          categories={CATEGORIES}
+                          selectedCategory={category}
+                          onSelectCategory={setCategory}
                         />
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                        Category
-                      </label>
-                      <GlassCategoryDropdown
-                        categories={CATEGORIES}
-                        selectedCategory={category}
-                        onSelectCategory={setCategory}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
-                    >
-                      <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
-                      Add Expense
-                    </button>
-                  </form>
+                      <button
+                        type="submit"
+                        className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
+                      >
+                        <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                        Add Expense
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              </div>
 
-              <div className="lg:col-span-7">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
-                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
-                    <Receipt className="w-5 h-5 text-slate-400" />
-                    Expense Feed ({currentExpenses.length})
-                  </h2>
+                <div className="lg:col-span-7">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
+                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
+                      <Receipt className="w-5 h-5 text-slate-400" />
+                      Expense Feed ({currentExpenses.length})
+                    </h2>
 
-                  <div className="space-y-3">
-                    {currentExpenses.length === 0 ? (
-                      <p className="text-xs sm:text-sm font-semibold text-slate-400 text-center py-10">
-                        No expenses added to this trip yet.
+                    <div className="space-y-3">
+                      {currentExpenses.length === 0 ? (
+                        <p className="text-xs sm:text-sm font-semibold text-slate-400 text-center py-10">
+                          No expenses added to this trip yet.
+                        </p>
+                      ) : (
+                        currentExpenses.map((exp) => (
+                          <ExpenseCard
+                            key={exp.id}
+                            expense={exp}
+                            onSettleExpense={handleSettleExpenseCard}
+                            getAvatarForMember={getAvatarForMember}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === "settlements" && (
+              <motion.div
+                key="settlements"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="space-y-6 sm:space-y-8 max-w-4xl mx-auto"
+              >
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 sm:mb-6">
+                    <div>
+                      <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
+                        Optimized Settlement Plan
+                      </h2>
+                      <p className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
+                        Minimum transactions required to balance all debts for{" "}
+                        <strong>{currentTrip.name}</strong>.
                       </p>
+                    </div>
+
+                    <span className="self-start sm:self-center text-[10px] sm:text-xs bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 px-3 py-1 rounded-full font-extrabold">
+                      {
+                        settlements.filter((s) => !settledIds.includes(s.id))
+                          .length
+                      }{" "}
+                      Pending
+                    </span>
+                  </div>
+
+                  <div className="space-y-3.5 sm:space-y-4">
+                    {settlements.length === 0 ? (
+                      <div className="text-center py-10 sm:py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-4">
+                        <CheckCircle2 className="w-10 h-10 sm:w-14 sm:h-14 text-teal-500 mx-auto mb-3 opacity-90" />
+                        <p className="text-xs sm:text-base font-extrabold text-slate-800 dark:text-slate-200">
+                          Trip Fully Settled!
+                        </p>
+                        <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-1">
+                          Nobody owes any money right now.
+                        </p>
+                      </div>
                     ) : (
-                      currentExpenses.map((exp) => (
-                        <ExpenseCard
-                          key={exp.id}
-                          expense={exp}
-                          onSettleExpense={handleSettleExpenseCard}
-                          getAvatarForMember={getAvatarForMember}
-                        />
-                      ))
+                      settlements.map((s) => {
+                        const isSettled = settledIds.includes(s.id);
+                        const details = settlementDetailsMap[s.id];
+                        const fromAvatar = getAvatarForMember(s.from);
+                        const toAvatar = getAvatarForMember(s.to);
+
+                        return (
+                          <div
+                            key={s.id}
+                            className="flex flex-col p-3.5 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 shadow-sm transition-all gap-3.5"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                              <div className="flex items-center justify-around sm:justify-start space-x-3 sm:space-x-4">
+                                <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                                  {fromAvatar ? (
+                                    <img
+                                      src={fromAvatar}
+                                      alt={s.from}
+                                      className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-rose-500/40 shadow-sm"
+                                    />
+                                  ) : (
+                                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 font-black text-xs sm:text-sm flex items-center justify-center">
+                                      {s.from[0]}
+                                    </div>
+                                  )}
+                                  <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
+                                    {s.from}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-col items-center px-1">
+                                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 stroke-[3]" />
+                                  <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">
+                                    Owes
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                                  {toAvatar ? (
+                                    <img
+                                      src={toAvatar}
+                                      alt={s.to}
+                                      className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-emerald-500/40 shadow-sm"
+                                    />
+                                  ) : (
+                                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black text-xs sm:text-sm flex items-center justify-center">
+                                      {s.to[0]}
+                                    </div>
+                                  )}
+                                  <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
+                                    {s.to}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end space-x-3 pt-2 sm:pt-0 border-t sm:border-0 border-slate-200/60 dark:border-slate-800/60">
+                                <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400 mr-2">
+                                  ₹{s.amount.toLocaleString()}
+                                </span>
+
+                                {isSettled ? (
+                                  <div className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/25 flex items-center gap-1.5">
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    <span>Settled</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <motion.button
+                                      type="button"
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => setActiveUpiSettlement(s)}
+                                      className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-md shadow-teal-500/20 transition-all"
+                                    >
+                                      UPI
+                                    </motion.button>
+
+                                    <motion.button
+                                      type="button"
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleCashSettle(s)}
+                                      className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
+                                    >
+                                      Cash
+                                    </motion.button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {isSettled && details && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                transition={{ duration: 0.3 }}
+                                className="mt-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] sm:text-xs bg-emerald-500/5 p-2.5 sm:p-3 rounded-2xl border border-emerald-500/20"
+                              >
+                                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                                  <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                  <span>
+                                    {details.settledAt} ({details.settledDate})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                                  <CreditCard className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                  <span>{details.method}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                                  <Hash className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                  <span>{details.transactionId}</span>
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {activeTab === "settlements" && (
-            <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 sm:mb-6">
-                  <div>
-                    <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
-                      Optimized Settlement Plan
-                    </h2>
-                    <p className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
-                      Minimum transactions required to balance all debts for{" "}
-                      <strong>{currentTrip.name}</strong>.
-                    </p>
-                  </div>
+            {activeTab === "members" && (
+              <motion.div
+                key="members"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="max-w-2xl mx-auto space-y-6"
+              >
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
+                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
+                    Trip Members ({currentTrip.members?.length || 0})
+                  </h2>
 
-                  <span className="self-start sm:self-center text-[10px] sm:text-xs bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 px-3 py-1 rounded-full font-extrabold">
-                    {
-                      settlements.filter((s) => !settledIds.includes(s.id))
-                        .length
-                    }{" "}
-                    Pending
-                  </span>
-                </div>
-
-                <div className="space-y-3.5 sm:space-y-4">
-                  {settlements.length === 0 ? (
-                    <div className="text-center py-10 sm:py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-4">
-                      <CheckCircle2 className="w-10 h-10 sm:w-14 sm:h-14 text-teal-500 mx-auto mb-3 opacity-90" />
-                      <p className="text-xs sm:text-base font-extrabold text-slate-800 dark:text-slate-200">
-                        Trip Fully Settled!
-                      </p>
-                      <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-1">
-                        Nobody owes any money right now.
-                      </p>
-                    </div>
-                  ) : (
-                    settlements.map((s) => {
-                      const isSettled = settledIds.includes(s.id);
-                      const details = settlementDetailsMap[s.id];
-                      const fromAvatar = getAvatarForMember(s.from);
-                      const toAvatar = getAvatarForMember(s.to);
-
+                  <div className="space-y-2.5 sm:space-y-3 mb-6">
+                    {currentTrip.members?.map((m, idx) => {
+                      const name = typeof m === "string" ? m : m.name;
+                      const avatar = typeof m === "object" ? m.avatar : null;
                       return (
                         <div
-                          key={s.id}
-                          className="flex flex-col p-3.5 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 shadow-sm transition-all gap-3.5"
+                          key={idx}
+                          className="flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
                         >
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-                            <div className="flex items-center justify-around sm:justify-start space-x-3 sm:space-x-4">
-                              <div className="flex flex-col items-center gap-1 min-w-[60px]">
-                                {fromAvatar ? (
-                                  <img
-                                    src={fromAvatar}
-                                    alt={s.from}
-                                    className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-rose-500/40 shadow-sm"
-                                  />
-                                ) : (
-                                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 font-black text-xs sm:text-sm flex items-center justify-center">
-                                    {s.from[0]}
-                                  </div>
-                                )}
-                                <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
-                                  {s.from}
-                                </span>
+                          <div className="flex items-center space-x-3 min-w-0">
+                            {avatar ? (
+                              <img
+                                src={avatar}
+                                alt={name}
+                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-teal-500/30 flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 font-extrabold text-xs flex items-center justify-center flex-shrink-0">
+                                {name[0]}
                               </div>
-
-                              <div className="flex flex-col items-center px-1">
-                                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 stroke-[3]" />
-                                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">
-                                  Owes
-                                </span>
-                              </div>
-
-                              <div className="flex flex-col items-center gap-1 min-w-[60px]">
-                                {toAvatar ? (
-                                  <img
-                                    src={toAvatar}
-                                    alt={s.to}
-                                    className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-emerald-500/40 shadow-sm"
-                                  />
-                                ) : (
-                                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black text-xs sm:text-sm flex items-center justify-center">
-                                    {s.to[0]}
-                                  </div>
-                                )}
-                                <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
-                                  {s.to}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between sm:justify-end space-x-3 pt-2 sm:pt-0 border-t sm:border-0 border-slate-200/60 dark:border-slate-800/60">
-                              <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400 mr-2">
-                                ₹{s.amount.toLocaleString()}
-                              </span>
-
-                              {isSettled ? (
-                                <div className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/25 flex items-center gap-1.5">
-                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                  <span>Settled</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <motion.button
-                                    type="button"
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => setActiveUpiSettlement(s)}
-                                    className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-md shadow-teal-500/20 transition-all"
-                                  >
-                                    UPI
-                                  </motion.button>
-
-                                  <motion.button
-                                    type="button"
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleCashSettle(s)}
-                                    className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
-                                  >
-                                    Cash
-                                  </motion.button>
-                                </div>
-                              )}
-                            </div>
+                            )}
+                            <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                              {name}
+                            </span>
                           </div>
-
-                          {isSettled && details && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              transition={{ duration: 0.3 }}
-                              className="mt-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] sm:text-xs bg-emerald-500/5 p-2.5 sm:p-3 rounded-2xl border border-emerald-500/20"
-                            >
-                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                                <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                <span>
-                                  {details.settledAt} ({details.settledDate})
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                                <CreditCard className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                <span>{details.method}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                                <Hash className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                <span>{details.transactionId}</span>
-                              </div>
-                            </motion.div>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "members" && (
-            <div className="max-w-2xl mx-auto space-y-6">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
-                <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
-                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
-                  Trip Members ({currentTrip.members?.length || 0})
-                </h2>
-
-                <div className="space-y-2.5 sm:space-y-3 mb-6">
-                  {currentTrip.members?.map((m, idx) => {
-                    const name = typeof m === "string" ? m : m.name;
-                    const avatar = typeof m === "object" ? m.avatar : null;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
-                      >
-                        <div className="flex items-center space-x-3 min-w-0">
-                          {avatar ? (
-                            <img
-                              src={avatar}
-                              alt={name}
-                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-teal-500/30 flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 font-extrabold text-xs flex items-center justify-center flex-shrink-0">
-                              {name[0]}
-                            </div>
-                          )}
-                          <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                            {name}
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 px-2.5 py-1 rounded-full flex-shrink-0">
+                            Member
                           </span>
                         </div>
-                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 px-2.5 py-1 rounded-full flex-shrink-0">
-                          Member
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
 
-                <form
-                  onSubmit={handleAddMember}
-                  className="space-y-3 sm:space-y-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60"
-                >
-                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Add New Member
-                  </p>
+                  <form
+                    onSubmit={handleAddMember}
+                    className="space-y-3 sm:space-y-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60"
+                  >
+                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Add New Member
+                    </p>
 
-                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                    <div className="flex gap-3 items-center">
-                      <label className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden flex-shrink-0">
-                        {newMemberAvatar ? (
-                          <img
-                            src={newMemberAvatar}
-                            alt="Avatar preview"
-                            className="w-full h-full object-cover"
+                    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                      <div className="flex gap-3 items-center">
+                        <label className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden flex-shrink-0">
+                          {newMemberAvatar ? (
+                            <img
+                              src={newMemberAvatar}
+                              alt="Avatar preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-teal-500 transition" />
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) =>
+                              handleCompressedImageUpload(e, setNewMemberAvatar)
+                            }
+                            className="hidden"
                           />
-                        ) : (
-                          <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-teal-500 transition" />
-                        )}
+                        </label>
+
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) =>
-                            handleCompressedImageUpload(e, setNewMemberAvatar)
-                          }
-                          className="hidden"
+                          type="text"
+                          placeholder="Add member name..."
+                          value={newMemberName}
+                          onChange={(e) => setNewMemberName(e.target.value)}
+                          className="flex-1 sm:hidden bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
                         />
-                      </label>
+                      </div>
 
                       <input
                         type="text"
                         placeholder="Add member name..."
                         value={newMemberName}
                         onChange={(e) => setNewMemberName(e.target.value)}
-                        className="flex-1 sm:hidden bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                        className="hidden sm:block flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
                       />
+
+                      <button
+                        type="submit"
+                        className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold transition shadow-sm"
+                      >
+                        Add
+                      </button>
                     </div>
-
-                    <input
-                      type="text"
-                      placeholder="Add member name..."
-                      value={newMemberName}
-                      onChange={(e) => setNewMemberName(e.target.value)}
-                      className="hidden sm:block flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                    />
-
-                    <button
-                      type="submit"
-                      className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold transition shadow-sm"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+                  </form>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
 
         {/* UPI PAYMENT MODAL */}
@@ -1819,7 +1858,7 @@ function MainDashboardApp({ user: firebaseUser }) {
 
                 <div className="space-y-2.5 mb-5">
                   <a
-                    href={`intent://upi/pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end;`}
+                    href={`intent://pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end;`}
                     onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
                     className="w-full flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 hover:border-teal-500 rounded-2xl text-xs font-extrabold text-white transition shadow-sm"
                   >
@@ -1828,7 +1867,7 @@ function MainDashboardApp({ user: firebaseUser }) {
                   </a>
 
                   <a
-                    href={`intent://upi/pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end;`}
+                    href={`intent://pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end;`}
                     onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
                     className="w-full flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 hover:border-purple-500 rounded-2xl text-xs font-extrabold text-white transition shadow-sm"
                   >

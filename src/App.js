@@ -28,7 +28,6 @@ import {
   CreditCard,
   Hash,
   Mail,
-  AlertCircle,
 } from "lucide-react";
 import { BrowserRouter, Routes, Route, useParams, useNavigate } from "react-router-dom";
 
@@ -765,9 +764,9 @@ function MainDashboardApp({ user: firebaseUser }) {
     const unsubscribeTrips = onSnapshot(
       collection(db, "trips"),
       (snapshot) => {
-        const firebaseTrips = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const firebaseTrips = snapshot.docs.map((docItem) => ({
+          id: docItem.id,
+          ...docItem.data(),
         }));
         if (firebaseTrips.length > 0) {
           const combined = [...INITIAL_TRIPS];
@@ -792,9 +791,9 @@ function MainDashboardApp({ user: firebaseUser }) {
     const unsubscribeExpenses = onSnapshot(
       collection(db, "expenses"),
       (snapshot) => {
-        const firebaseExpenses = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const firebaseExpenses = snapshot.docs.map((docItem) => ({
+          id: docItem.id,
+          ...docItem.data(),
         }));
         if (firebaseExpenses.length > 0) {
           setExpenses(firebaseExpenses);
@@ -843,8 +842,14 @@ function MainDashboardApp({ user: firebaseUser }) {
   const [showNewTripModal, setShowNewTripModal] = useState(false);
   const [newTripName, setNewTripName] = useState("");
   const [newTripPic, setNewTripPic] = useState(null);
-  const [newTripCreatorName, setNewTripCreatorName] = useState(userProfile?.name || "Naqeeb");
+  const [newTripCreatorName, setNewTripCreatorName] = useState("Naqeeb");
   const [newTripUpiId, setNewTripUpiId] = useState("");
+
+  useEffect(() => {
+    if (userProfile?.name) {
+      setNewTripCreatorName(userProfile.name);
+    }
+  }, [userProfile]);
 
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");

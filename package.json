@@ -11,8 +11,10 @@
     "firebase": "^12.17.1",
     "framer-motion": "^13.0.0",
     "lucide-react": "^1.30.0",
+    "mongoose": "^9.9.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },

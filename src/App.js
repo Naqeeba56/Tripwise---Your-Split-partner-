@@ -21,16 +21,16 @@ import {
   Check,
   PlaneTakeoff,
   UserCheck,
-  Image as ImageIcon,
   Camera,
   LogOut,
   Share2,
-  Copy,
-  Sparkles,
   Clock,
   CreditCard,
   Hash,
+  Mail,
+  AlertCircle,
 } from "lucide-react";
+import { BrowserRouter, Routes, Route, useParams, useNavigate } from "react-router-dom";
 
 // --- FIREBASE IMPORTS ---
 import { initializeApp } from "firebase/app";
@@ -45,10 +45,10 @@ import {
 
 import {
   getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
   signOut,
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 
 // --- FIREBASE CONFIGURATION ---
@@ -103,12 +103,19 @@ const CATEGORIES = [
 // --- INITIAL MOCK DATA ---
 const INITIAL_TRIPS = [
   {
-    id: 1,
+    id: "1",
     name: "Goa Trip 2026",
     image:
       "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?q=80&w=1000&auto=format&fit=crop",
     createdBy: "public",
+    creatorName: "Naqeeb",
+    creatorUpi: "naqeeb@upi",
+    inviteToken: "sample_token_abc",
     members: [
+      {
+        name: "Naqeeb",
+        avatar: null,
+      },
       {
         name: "Alex",
         avatar:
@@ -119,36 +126,26 @@ const INITIAL_TRIPS = [
         avatar:
           "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop",
       },
-      { name: "Rohan", avatar: null },
-      { name: "Priya", avatar: null },
     ],
   },
 ];
 
 const INITIAL_EXPENSES = [
   {
-    id: 1,
-    tripId: 1,
+    id: "1",
+    tripId: "1",
     title: "Beach Villa Stay",
     amount: 16000,
     paidBy: "Alex",
     category: "Stay",
   },
   {
-    id: 2,
-    tripId: 1,
+    id: "2",
+    tripId: "1",
     title: "Scooter Rental & Fuel",
     amount: 3200,
     paidBy: "Sam",
     category: "Travel",
-  },
-  {
-    id: 3,
-    tripId: 1,
-    title: "Seafood Dinner",
-    amount: 4800,
-    paidBy: "Rohan",
-    category: "Food",
   },
 ];
 
@@ -609,8 +606,80 @@ function GlassCategoryDropdown({
   );
 }
 
-// --- MAIN APPLICATION COMPONENT ---
+// --- ROUTED SCREENS ---
+function CreateTripScreen() {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-center">
+        <h2 className="text-xl font-bold mb-2">Create New Trip</h2>
+        <p className="text-xs text-slate-400 mb-6">Set up a new shared expense tracker for your group.</p>
+        <button onClick={() => navigate("/")} className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs">Back to Dashboard</button>
+      </div>
+    </div>
+  );
+}
+
+function JoinTripScreen() {
+  const { token } = useParams();
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-center">
+        <h2 className="text-xl font-bold mb-2">Join Trip</h2>
+        <p className="text-xs text-slate-400 mb-2">Invite Token: <span className="font-mono text-teal-400">{token}</span></p>
+        <p className="text-xs text-slate-300 mb-6">You are invited to collaborate on this Tripwise shared tracker.</p>
+        <button onClick={() => navigate("/")} className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs">Join & Open Dashboard</button>
+      </div>
+    </div>
+  );
+}
+
+function TripDetailScreen() {
+  const { tripId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-center">
+        <h2 className="text-xl font-bold mb-2">Trip Details</h2>
+        <p className="text-xs text-slate-400 mb-4">Trip ID: <span className="font-mono text-teal-400">{tripId}</span></p>
+        <button onClick={() => navigate("/")} className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs">Back to Dashboard</button>
+      </div>
+    </div>
+  );
+}
+
+// --- MAIN APPLICATION COMPONENT & ROUTER WRAPPER ---
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loadingAuth) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><h3>Loading session...</h3></div>;
+  }
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MainDashboardApp user={user} />} />
+        <Route path="/create-trip" element={<CreateTripScreen />} />
+        <Route path="/trip/join/:token" element={<JoinTripScreen />} />
+        <Route path="/trips/:tripId" element={<TripDetailScreen />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+// --- MAIN DASHBOARD APP SCREEN ---
+function MainDashboardApp({ user: firebaseUser }) {
   const [darkMode, setDarkMode] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -620,47 +689,77 @@ export default function App() {
     if (appError) {
       const timer = setTimeout(() => {
         setAppError(null);
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [appError]);
 
-  const [userGoogleProfile, setUserGoogleProfile] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
 
   const [allTrips, setAllTrips] = useState(INITIAL_TRIPS);
   const [activeTripId, setActiveTripId] = useState(() => {
     const saved = localStorage.getItem("splittrip_active_id");
-    return saved ? JSON.parse(saved) : 1;
+    return saved ? JSON.parse(saved) : "1";
   });
   const [expenses, setExpenses] = useState(INITIAL_EXPENSES);
   const [settledIds, setSettledIds] = useState([]);
   const [settlementDetailsMap, setSettlementDetailsMap] = useState({});
+
+  // UPI Settlement Modal State
+  const [activeUpiSettlement, setActiveUpiSettlement] = useState(null);
 
   useEffect(() => {
     localStorage.setItem("splittrip_active_id", JSON.stringify(activeTripId));
   }, [activeTripId]);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserGoogleProfile({
-          uid: user.uid,
-          name: user.displayName || "User",
-          email: user.email,
-          avatar: user.photoURL || null,
-        });
-        setIsAdmin(true);
-      } else {
-        setUserGoogleProfile(null);
-      }
-    });
+    if (firebaseUser) {
+      setUserProfile({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || "Verified User",
+        name: firebaseUser.displayName || "Naqeeb",
+        photoURL: firebaseUser.photoURL || null,
+      });
+      setIsAdmin(true);
+    } else {
+      setUserProfile(null);
+      setIsAdmin(false);
+    }
+  }, [firebaseUser]);
 
-    return () => unsubscribeAuth();
-  }, []);
+  const handleGoogleSignIn = async () => {
+    setAuthLoading(true);
+    setAppError(null);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      setUserProfile({
+        uid: user.uid,
+        email: user.email,
+        name: user.displayName || "Naqeeb",
+        photoURL: user.photoURL,
+      });
+      setIsAdmin(true);
+      setAuthLoading(false);
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+      setAppError(error.message || "Failed to sign in with Google.");
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      setUserProfile(null);
+      setIsAdmin(false);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   useEffect(() => {
     const unsubscribeTrips = onSnapshot(
@@ -744,6 +843,8 @@ export default function App() {
   const [showNewTripModal, setShowNewTripModal] = useState(false);
   const [newTripName, setNewTripName] = useState("");
   const [newTripPic, setNewTripPic] = useState(null);
+  const [newTripCreatorName, setNewTripCreatorName] = useState(userProfile?.name || "Naqeeb");
+  const [newTripUpiId, setNewTripUpiId] = useState("");
 
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -756,7 +857,7 @@ export default function App() {
   const currentTrip = useMemo(() => {
     return (
       trips.find((t) => String(t.id) === String(activeTripId)) ||
-      trips[0] || { members: [] }
+      trips[0] || { members: [], creatorName: "Naqeeb", creatorUpi: "naqeeb@upi" }
     );
   }, [trips, activeTripId]);
 
@@ -855,34 +956,6 @@ export default function App() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-
-      setUserGoogleProfile({
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        avatar: user.photoURL,
-      });
-      setIsAdmin(true);
-      setShowAuthModal(false);
-    } catch (error) {
-      console.error("Google Sign-In Error:", error);
-      setAppError("Failed to sign in with Google: " + error.message);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      setUserGoogleProfile(null);
-    } catch (error) {
-      console.error("Sign-Out Error:", error);
-    }
-  };
-
   const handleAddExpense = async (e) => {
     e.preventDefault();
     if (!title || title.trim() === "") {
@@ -898,7 +971,7 @@ export default function App() {
     const newExpId = String(Date.now());
     const newExp = {
       id: newExpId,
-      tripId: activeTripId,
+      tripId: String(activeTripId),
       title: title.trim(),
       amount: parseFloat(amount),
       paidBy,
@@ -935,24 +1008,29 @@ export default function App() {
       return;
     }
 
-    const newTripId = Date.now();
+    const newTripId = String(Date.now());
+    const uniqueInviteToken = Math.random().toString(36).substring(2, 8);
+    const creatorNameFinal = newTripCreatorName.trim() || userProfile?.name || "Naqeeb";
+    const creatorUpiFinal = newTripUpiId.trim() || "naqeeb@upi";
+
     const newTrip = {
       id: newTripId,
       name: newTripName.trim(),
       image: newTripPic,
-      createdBy: userGoogleProfile ? userGoogleProfile.uid : "public",
-      members: userGoogleProfile
-        ? [
-            {
-              name: userGoogleProfile.name.split(" ")[0],
-              avatar: userGoogleProfile.avatar,
-            },
-          ]
-        : [{ name: "Alex", avatar: null }],
+      inviteToken: uniqueInviteToken,
+      createdBy: userProfile ? userProfile.uid : "public",
+      creatorName: creatorNameFinal,
+      creatorUpi: creatorUpiFinal,
+      members: [
+        {
+          name: creatorNameFinal,
+          avatar: userProfile?.photoURL || null,
+        },
+      ],
     };
 
     try {
-      await setDoc(doc(db, "trips", String(newTripId)), newTrip);
+      await setDoc(doc(db, "trips", newTripId), newTrip);
     } catch (error) {
       console.warn("Firestore trip creation fallback:", error);
       setAllTrips([...allTrips, newTrip]);
@@ -961,6 +1039,7 @@ export default function App() {
     setActiveTripId(newTripId);
     setNewTripName("");
     setNewTripPic(null);
+    setNewTripUpiId("");
     setShowNewTripModal(false);
     setAppError(null);
   };
@@ -1014,7 +1093,7 @@ export default function App() {
     setAppError(null);
   };
 
-  const handleSettle = async (settlement) => {
+  const handleCashSettle = async (settlement) => {
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.7 } });
 
     const dynamicData = {
@@ -1023,8 +1102,8 @@ export default function App() {
         minute: "2-digit",
       }),
       settledDate: new Date().toLocaleDateString(),
-      method: "Instant UPI / Direct Transfer",
-      transactionId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+      method: "Cash Settlement",
+      transactionId: `CASH-${Math.floor(100000 + Math.random() * 900000)}`,
     };
 
     const updatedSettledIds = [...settledIds, settlement.id];
@@ -1046,10 +1125,37 @@ export default function App() {
     }
   };
 
-  const copyInviteLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+  const handleFinalizeUpiSettle = async (settlement) => {
+    confetti({ particleCount: 80, spread: 70, origin: { y: 0.7 } });
+
+    const dynamicData = {
+      settledAt: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      settledDate: new Date().toLocaleDateString(),
+      method: "Instant UPI Transfer",
+      transactionId: `UPI-${Math.floor(100000 + Math.random() * 900000)}`,
+    };
+
+    const updatedSettledIds = [...settledIds, settlement.id];
+    const updatedMap = {
+      ...settlementDetailsMap,
+      [settlement.id]: dynamicData,
+    };
+
+    setSettledIds(updatedSettledIds);
+    setSettlementDetailsMap(updatedMap);
+    setActiveUpiSettlement(null);
+
+    try {
+      await setDoc(doc(db, "meta", "settledState"), {
+        settledIds: updatedSettledIds,
+        settlementDetailsMap: updatedMap,
+      });
+    } catch (error) {
+      console.warn("Firestore settlement sync fallback:", error);
+    }
   };
 
   return (
@@ -1109,10 +1215,8 @@ export default function App() {
       `}</style>
 
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300 pb-20">
-        {/* Navigation Header */}
         <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
           <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3 flex items-center justify-between gap-2">
-            {/* BRAND & TRIP DROPDOWN CONTAINER */}
             <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
               <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2.5 sm:p-3 rounded-2xl shadow-lg shadow-teal-500/20 text-slate-950 flex-shrink-0">
                 <HandCoins className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" />
@@ -1135,7 +1239,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* HEADER QUICK ACTIONS */}
             <div className="flex items-center space-x-1.5 sm:space-x-2.5 flex-shrink-0">
               <button
                 onClick={() => setShowInviteModal(true)}
@@ -1146,57 +1249,40 @@ export default function App() {
                 <span className="hidden sm:inline">Invite</span>
               </button>
 
-              {userGoogleProfile ? (
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl">
-                  {userGoogleProfile.avatar ? (
-                    <img
-                      src={userGoogleProfile.avatar}
-                      alt="Profile"
-                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-teal-500/20 text-teal-500 text-[10px] sm:text-xs font-bold flex items-center justify-center">
-                      {userGoogleProfile.name[0]}
-                    </div>
-                  )}
-                  <span className="text-xs font-bold hidden md:inline">
-                    {userGoogleProfile.name}
-                  </span>
+              {isAdmin && userProfile ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 rounded-2xl">
+                    {userProfile.photoURL ? (
+                      <img
+                        src={userProfile.photoURL}
+                        alt={userProfile.name}
+                        className="w-6 h-6 rounded-full object-cover border border-teal-500/30"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-[11px] flex items-center justify-center">
+                        {userProfile.name[0]}
+                      </div>
+                    )}
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 hidden sm:inline">
+                      {userProfile.name}
+                    </span>
+                  </div>
                   <button
                     onClick={handleSignOut}
-                    title="Sign out"
-                    className="text-slate-400 hover:text-rose-500 transition-colors"
+                    className="flex items-center gap-1 px-3 py-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-xs font-bold transition shadow-sm"
                   >
                     <LogOut className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Sign Out</span>
                   </button>
                 </div>
               ) : (
                 <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/40 text-slate-800 dark:text-slate-200 p-2 sm:px-3.5 sm:py-2 rounded-2xl text-xs font-extrabold transition shadow-sm"
+                  onClick={handleGoogleSignIn}
+                  disabled={authLoading}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-xl text-xs font-extrabold transition shadow-md shadow-teal-500/10 disabled:opacity-50"
                 >
-                  <svg
-                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  <span className="hidden sm:inline">Gmail Login</span>
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>{authLoading ? "Signing in..." : "Sign in with Google"}</span>
                 </button>
               )}
 
@@ -1222,7 +1308,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Navigation Tabs */}
           <div className="max-w-6xl mx-auto px-3 sm:px-6 flex border-t border-slate-200/60 dark:border-slate-800/60 overflow-x-auto no-scrollbar">
             {[
               { id: "dashboard", label: "Dashboard", icon: PieChart },
@@ -1270,9 +1355,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* Main Application Body */}
         <main className="max-w-6xl mx-auto px-3.5 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
-          {/* ACTIVE TRIP COVER PHOTO BANNER */}
           {currentTrip.image && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -1290,7 +1373,7 @@ export default function App() {
                     Active Trip
                   </span>
                   <span className="text-[11px] sm:text-xs font-bold text-slate-300">
-                    {currentTrip.members?.length || 0} Members
+                    Trip created by {currentTrip.creatorName || "Naqeeb"}
                   </span>
                 </div>
                 <h2 className="text-xl sm:text-4xl md:text-5xl font-black text-white tracking-tight truncate">
@@ -1300,7 +1383,19 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* DASHBOARD TAB */}
+          {!currentTrip.image && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+                  {currentTrip.name}
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Trip created by {currentTrip.creatorName || "Naqeeb"}
+                </p>
+              </div>
+            </div>
+          )}
+
           {activeTab === "dashboard" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
               <div className="lg:col-span-5 space-y-4 sm:space-y-6">
@@ -1323,7 +1418,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Expense Form */}
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
                   <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
                     <Plus className="w-5 h-5 text-teal-500 stroke-[3]" />
@@ -1408,7 +1502,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Expense Feed */}
               <div className="lg:col-span-7">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
                   <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
@@ -1437,7 +1530,6 @@ export default function App() {
             </div>
           )}
 
-          {/* SETTLEMENTS TAB */}
           {activeTab === "settlements" && (
             <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
@@ -1529,42 +1621,39 @@ export default function App() {
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between sm:justify-end space-x-4 pt-2 sm:pt-0 border-t sm:border-0 border-slate-200/60 dark:border-slate-800/60">
-                              <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400">
+                            <div className="flex items-center justify-between sm:justify-end space-x-3 pt-2 sm:pt-0 border-t sm:border-0 border-slate-200/60 dark:border-slate-800/60">
+                              <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400 mr-2">
                                 ₹{s.amount.toLocaleString()}
                               </span>
 
-                              <motion.button
-                                type="button"
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => !isSettled && handleSettle(s)}
-                                className={`text-[11px] sm:text-xs font-extrabold px-3.5 py-2 sm:px-5 sm:py-3 rounded-2xl transition-all duration-300 shadow-md flex items-center gap-1.5 ${
-                                  isSettled
-                                    ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/25 cursor-default ring-2 ring-emerald-400/40 font-black"
-                                    : "bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-teal-500/20"
-                                }`}
-                              >
-                                {isSettled ? (
-                                  <>
-                                    <motion.div
-                                      initial={{ scale: 0 }}
-                                      animate={{ scale: 1 }}
-                                      transition={{
-                                        type: "spring",
-                                        stiffness: 300,
-                                        damping: 20,
-                                      }}
-                                    >
-                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                    </motion.div>
-                                    <span className="tracking-wide">
-                                      Settled
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span>Mark Settled</span>
-                                )}
-                              </motion.button>
+                              {isSettled ? (
+                                <div className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/25 flex items-center gap-1.5">
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  <span>Settled</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  {/* UPI Button */}
+                                  <motion.button
+                                    type="button"
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => setActiveUpiSettlement(s)}
+                                    className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-md shadow-teal-500/20 transition-all"
+                                  >
+                                    UPI
+                                  </motion.button>
+
+                                  {/* Cash Button */}
+                                  <motion.button
+                                    type="button"
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => handleCashSettle(s)}
+                                    className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
+                                  >
+                                    Cash
+                                  </motion.button>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1600,7 +1689,6 @@ export default function App() {
             </div>
           )}
 
-          {/* MEMBERS TAB */}
           {activeTab === "members" && (
             <div className="max-w-2xl mx-auto space-y-6">
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
@@ -1702,194 +1790,185 @@ export default function App() {
           )}
         </main>
 
-        {/* GOOGLE AUTH MODAL */}
+        {/* UPI PAYMENT MODAL */}
         <AnimatePresence>
-          {showAuthModal && (
-            <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          {activeUpiSettlement && (
+            <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-white/60 dark:border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-sm shadow-2xl text-center"
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-sm shadow-2xl relative"
               >
-                <div className="p-3 bg-teal-500/10 text-teal-500 rounded-2xl w-max mx-auto mb-4">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-
-                <h3 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">
-                  Welcome to Tripwise
-                </h3>
-                <p className="text-[11px] sm:text-xs text-slate-400 mb-6">
-                  Sign in with your Google account to sync your trips across
-                  devices.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-100 font-extrabold py-3 px-4 rounded-2xl text-xs sm:text-sm transition shadow-md"
-                >
-                  <svg
-                    className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAuthModal(false)}
-                  className="mt-4 text-[11px] sm:text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  Cancel
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* INVITE LINK MODAL */}
-        <AnimatePresence>
-          {showInviteModal && (
-            <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-white/60 dark:border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-sm shadow-2xl"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-teal-500/10 text-teal-500 rounded-2xl flex-shrink-0">
-                    <Share2 className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
-                      Invite Friends
-                    </h3>
-                    <p className="text-[11px] sm:text-xs text-slate-400">
-                      Share trip link to collaborate
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-2 mb-4">
-                  <input
-                    type="text"
-                    readOnly
-                    value={window.location.href}
-                    className="flex-1 bg-transparent text-xs font-semibold text-slate-600 dark:text-slate-300 px-2 outline-none truncate"
-                  />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-extrabold text-white">Select Payment App</h3>
                   <button
-                    onClick={copyInviteLink}
-                    className="bg-teal-500 hover:bg-teal-400 text-slate-950 p-2 rounded-xl text-xs font-extrabold flex items-center gap-1 transition flex-shrink-0"
+                    onClick={() => setActiveUpiSettlement(null)}
+                    className="text-slate-400 hover:text-white text-xs font-bold"
                   >
-                    {copiedLink ? (
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
+                    ✕
                   </button>
                 </div>
 
+                <p className="text-xs text-slate-400 mb-5">
+                  Pay <span className="text-white font-bold">₹{activeUpiSettlement.amount}</span> to <span className="text-teal-400 font-bold">{currentTrip.creatorName || "Naqeeb"}</span> (UPI: <span className="font-mono text-teal-300">{currentTrip.creatorUpi || "naqeeb@upi"}</span>)
+                </p>
+
+                <div className="space-y-2.5 mb-5">
+                  {/* Google Pay Direct Intent Link */}
+                  <a
+                    href={`intent://upi/pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end;`}
+                    onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
+                    className="w-full flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 hover:border-teal-500 rounded-2xl text-xs font-extrabold text-white transition shadow-sm"
+                  >
+                    <span>Google Pay (GPay)</span>
+                    <span className="text-teal-400">Open App →</span>
+                  </a>
+
+                  {/* PhonePe Direct Intent Link */}
+                  <a
+                    href={`intent://upi/pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end;`}
+                    onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
+                    className="w-full flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 hover:border-purple-500 rounded-2xl text-xs font-extrabold text-white transition shadow-sm"
+                  >
+                    <span>PhonePe</span>
+                    <span className="text-purple-400">Open App →</span>
+                  </a>
+
+                  {/* Generic UPI Fallback Link */}
+                  <a
+                    href={`upi://pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR`}
+                    onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
+                    className="w-full flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 hover:border-emerald-500 rounded-2xl text-xs font-extrabold text-white transition shadow-sm"
+                  >
+                    <span>Other UPI Apps</span>
+                    <span className="text-emerald-400">Open App →</span>
+                  </a>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setShowInviteModal(false)}
-                  className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold rounded-2xl text-xs"
+                  onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
+                  className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/10"
                 >
-                  Close
+                  Mark Settled Manually After Payment
                 </button>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
 
-        {/* CREATE NEW TRIP MODAL */}
+        {/* NEW TRIP MODAL */}
         <AnimatePresence>
           {showNewTripModal && (
-            <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-white/60 dark:border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-2xl"
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-2xl relative"
               >
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5">
-                  Create New Trip
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2.5 bg-teal-500/10 text-teal-400 rounded-2xl border border-teal-500/20">
+                      <PlaneTakeoff className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-lg font-extrabold text-white">Create New Trip</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowNewTripModal(false)}
+                    className="text-slate-400 hover:text-white text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
                 <form onSubmit={handleCreateTrip} className="space-y-4">
                   <div>
-                    <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                      Trip Cover Photo
-                    </label>
-                    <label className="w-full h-28 sm:h-32 rounded-2xl bg-slate-50 dark:bg-slate-950 border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center cursor-pointer hover:border-teal-500/50 transition overflow-hidden">
-                      {newTripPic ? (
-                        <img
-                          src={newTripPic}
-                          alt="Trip cover preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-1.5 text-slate-400">
-                          <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-                          <span className="text-[11px] sm:text-xs font-semibold">
-                            Click to upload cover photo
-                          </span>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) =>
-                          handleCompressedImageUpload(e, setNewTripPic)
-                        }
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                       Trip Name
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Goa Trip 2026, Manali Expedition"
+                      placeholder="e.g. Udupi & Goa Expedition 2026"
                       value={newTripName}
                       onChange={(e) => setNewTripName(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:border-teal-500 transition"
+                      required
                     />
                   </div>
 
-                  <div className="flex justify-end space-x-3 pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Creator Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Naqeeb"
+                        value={newTripCreatorName}
+                        onChange={(e) => setNewTripCreatorName(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:border-teal-500 transition"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        UPI ID / Number
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. naqeeb@upi"
+                        value={newTripUpiId}
+                        onChange={(e) => setNewTripUpiId(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:border-teal-500 transition"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                      Cover Photo (Optional)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <label className="w-16 h-16 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden flex-shrink-0">
+                        {newTripPic ? (
+                          <img
+                            src={newTripPic}
+                            alt="Cover preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Camera className="w-5 h-5 text-slate-400" />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleCompressedImageUpload(e, setNewTripPic)}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-xs text-slate-400">
+                        {newTripPic ? "Cover photo selected" : "Click to upload a custom banner image"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
                     <button
                       type="button"
                       onClick={() => setShowNewTripModal(false)}
-                      className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold py-3 rounded-2xl text-xs transition"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="bg-teal-500 hover:bg-teal-400 text-slate-950 px-5 py-2.5 rounded-2xl text-xs font-extrabold transition shadow-sm"
+                      className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/10"
                     >
-                      Create Trip
+                      Save & Start Trip
                     </button>
                   </div>
                 </form>
@@ -1898,51 +1977,51 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* FOOTER SECTION */}
-        <footer className="mt-12 sm:mt-20 border-t border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="flex flex-col items-center space-y-2 w-full">
-                <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-2.5 rounded-2xl shadow-md shadow-teal-500/20 text-slate-950">
-                  <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+        {/* INVITE MODAL */}
+        <AnimatePresence>
+          {showInviteModal && (
+            <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-sm shadow-2xl text-center relative"
+              >
+                <div className="p-3 bg-teal-500/10 text-teal-400 rounded-2xl w-max mx-auto mb-4 border border-teal-500/20">
+                  <Share2 className="w-6 h-6" />
                 </div>
-                <div className="w-full overflow-hidden">
-                  <h3 className="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent">
-                    Tripwise
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap mt-1">
-                    Smart group expense splitting &amp; instant settlement tracking.
-                  </p>
-                </div>
-              </div>
 
-              <div className="pt-1">
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 flex-wrap">
-                  <span>&copy; 2026 <strong className="text-slate-800 dark:text-slate-200">Mohd Naqeeb</strong>. All rights reserved.</span>
-                  <span className="hidden sm:inline">|</span>
-                  <span className="flex items-center gap-1">
-                    Connect on
-                    <a
-                      href="https://www.linkedin.com/in/your-linkedin-profile"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="LinkedIn Profile"
-                      className="inline-flex items-center text-slate-600 dark:text-slate-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
-                    >
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className="w-4 h-4 fill-current" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M4.983 2.821a2.188 2.188 0 1 0 0 4.376 2.188 2.188 0 1 0 0-4.376M9.237 8.855v12.139h3.769v-6.003c0-1.584.298-3.118 2.262-3.118 1.937 0 1.961 1.811 1.961 3.218v5.904H21v-6.657c0-3.27-.704-5.783-4.526-5.783-1.835 0-3.065 1.007-3.568 1.96h-.051v-1.66zm-6.142 0H6.87v12.139H3.095z"/>
-                      </svg>
-                    </a>
-                  </span>
+                <h3 className="text-lg font-extrabold text-white mb-1">Invite Friends</h3>
+                <p className="text-xs text-slate-400 mb-6">
+                  Share this trip link with your group members so they can join and track expenses.
                 </p>
-              </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 flex items-center justify-between mb-5">
+                  <span className="text-xs font-mono text-teal-400 truncate mr-2">
+                    {window.location.origin}/trip/join/{currentTrip.inviteToken || "tripwise_invite"}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/trip/join/${currentTrip.inviteToken || "tripwise_invite"}`);
+                      alert("Invite link copied to clipboard!");
+                    }}
+                    className="bg-teal-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 hover:bg-teal-400 transition"
+                  >
+                    Copy
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold py-3 rounded-2xl text-xs transition"
+                >
+                  Close
+                </button>
+              </motion.div>
             </div>
-          </div>
-        </footer>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

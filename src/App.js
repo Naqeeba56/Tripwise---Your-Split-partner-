@@ -1633,7 +1633,6 @@ function MainDashboardApp({ user: firebaseUser }) {
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
-                                  {/* UPI Button */}
                                   <motion.button
                                     type="button"
                                     whileTap={{ scale: 0.95 }}
@@ -1643,7 +1642,6 @@ function MainDashboardApp({ user: firebaseUser }) {
                                     UPI
                                   </motion.button>
 
-                                  {/* Cash Button */}
                                   <motion.button
                                     type="button"
                                     whileTap={{ scale: 0.95 }}
@@ -1815,7 +1813,6 @@ function MainDashboardApp({ user: firebaseUser }) {
                 </p>
 
                 <div className="space-y-2.5 mb-5">
-                  {/* Google Pay Direct Intent Link */}
                   <a
                     href={`intent://upi/pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end;`}
                     onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
@@ -1825,7 +1822,6 @@ function MainDashboardApp({ user: firebaseUser }) {
                     <span className="text-teal-400">Open App →</span>
                   </a>
 
-                  {/* PhonePe Direct Intent Link */}
                   <a
                     href={`intent://upi/pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end;`}
                     onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}
@@ -1835,7 +1831,6 @@ function MainDashboardApp({ user: firebaseUser }) {
                     <span className="text-purple-400">Open App →</span>
                   </a>
 
-                  {/* Generic UPI Fallback Link */}
                   <a
                     href={`upi://pay?pa=${currentTrip.creatorUpi || "naqeeb@upi"}&pn=${encodeURIComponent(currentTrip.creatorName || "Naqeeb")}&am=${activeUpiSettlement.amount}&cu=INR`}
                     onClick={() => handleFinalizeUpiSettle(activeUpiSettlement)}

@@ -29,7 +29,13 @@ import {
   Hash,
   Mail,
 } from "lucide-react";
-import { BrowserRouter, Routes, Route, useParams, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useParams,
+  useNavigate,
+} from "react-router-dom";
 
 // --- FIREBASE IMPORTS ---
 import { initializeApp } from "firebase/app";
@@ -616,8 +622,15 @@ function CreateTripScreen() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-center">
         <h2 className="text-xl font-bold mb-2">Create New Trip</h2>
-        <p className="text-xs text-slate-400 mb-6">Set up a new shared expense tracker for your group.</p>
-        <button onClick={() => navigate("/")} className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs">Back to Dashboard</button>
+        <p className="text-xs text-slate-400 mb-6">
+          Set up a new shared expense tracker for your group.
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs"
+        >
+          Back to Dashboard
+        </button>
       </div>
     </div>
   );
@@ -630,9 +643,18 @@ function JoinTripScreen() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-center">
         <h2 className="text-xl font-bold mb-2">Join Trip</h2>
-        <p className="text-xs text-slate-400 mb-2">Invite Token: <span className="font-mono text-teal-400">{token}</span></p>
-        <p className="text-xs text-slate-300 mb-6">You are invited to collaborate on this Tripwise shared tracker.</p>
-        <button onClick={() => navigate("/")} className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs">Join & Open Dashboard</button>
+        <p className="text-xs text-slate-400 mb-2">
+          Invite Token: <span className="font-mono text-teal-400">{token}</span>
+        </p>
+        <p className="text-xs text-slate-300 mb-6">
+          You are invited to collaborate on this Tripwise shared tracker.
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs"
+        >
+          Join & Open Dashboard
+        </button>
       </div>
     </div>
   );
@@ -645,8 +667,15 @@ function TripDetailScreen() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-center">
         <h2 className="text-xl font-bold mb-2">Trip Details</h2>
-        <p className="text-xs text-slate-400 mb-4">Trip ID: <span className="font-mono text-teal-400">{tripId}</span></p>
-        <button onClick={() => navigate("/")} className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs">Back to Dashboard</button>
+        <p className="text-xs text-slate-400 mb-4">
+          Trip ID: <span className="font-mono text-teal-400">{tripId}</span>
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="w-full bg-teal-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs"
+        >
+          Back to Dashboard
+        </button>
       </div>
     </div>
   );
@@ -676,7 +705,19 @@ export default function App() {
   }, []);
 
   if (loadingAuth) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><h3>Loading session...</h3></div>;
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          fontFamily: "sans-serif",
+        }}
+      >
+        <h3>Loading session...</h3>
+      </div>
+    );
   }
 
   return (
@@ -749,7 +790,10 @@ function MainDashboardApp({ user: firebaseUser }) {
       await signInWithPopup(auth, googleProvider);
       setAuthLoading(false);
     } catch (error) {
-      console.warn("Popup sign-in blocked or failed, attempting redirect method...", error);
+      console.warn(
+        "Popup sign-in blocked or failed, attempting redirect method...",
+        error,
+      );
       try {
         await signInWithRedirect(auth, googleProvider);
       } catch (redirectError) {
@@ -872,7 +916,11 @@ function MainDashboardApp({ user: firebaseUser }) {
   const currentTrip = useMemo(() => {
     return (
       trips.find((t) => String(t.id) === String(activeTripId)) ||
-      trips[0] || { members: [], creatorName: "Naqeeb", creatorUpi: "naqeeb@upi" }
+      trips[0] || {
+        members: [],
+        creatorName: "Naqeeb",
+        creatorUpi: "naqeeb@upi",
+      }
     );
   }, [trips, activeTripId]);
 
@@ -1025,7 +1073,8 @@ function MainDashboardApp({ user: firebaseUser }) {
 
     const newTripId = String(Date.now());
     const uniqueInviteToken = Math.random().toString(36).substring(2, 8);
-    const creatorNameFinal = newTripCreatorName.trim() || userProfile?.name || "Naqeeb";
+    const creatorNameFinal =
+      newTripCreatorName.trim() || userProfile?.name || "Naqeeb";
     const creatorUpiFinal = newTripUpiId.trim() || "naqeeb@upi";
 
     const newTrip = {
@@ -1229,605 +1278,685 @@ function MainDashboardApp({ user: firebaseUser }) {
         }
       `}</style>
 
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300 pb-20 overflow-x-hidden">
-        <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
-          <div className="max-w-6xl mx-auto px-2 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-1 sm:gap-2">
-            <div className="flex items-center space-x-1.5 sm:space-x-3.5 min-w-0">
-              <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-1.5 sm:p-3 rounded-xl sm:rounded-2xl shadow-lg shadow-teal-500/20 text-slate-950 flex-shrink-0">
-                <HandCoins className="w-4 h-4 sm:w-7 sm:h-7 stroke-[2.5]" />
-              </div>
-
-              <div className="flex items-center gap-1 sm:gap-3.5 min-w-0">
-                <h1 className="text-base sm:text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent truncate leading-tight flex-shrink-0">
-                  Tripwise
-                </h1>
-
-                <div className="min-w-0">
-                  <GlassTripDropdown
-                    trips={trips}
-                    activeTripId={activeTripId}
-                    onSelectTrip={setActiveTripId}
-                    onOpenNewTripModal={() => setShowNewTripModal(true)}
-                    isAdmin={isAdmin}
-                  />
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300 pb-20 overflow-x-hidden flex flex-col justify-between">
+        <div>
+          <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
+            <div className="max-w-6xl mx-auto px-2 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-1 sm:gap-2">
+              <div className="flex items-center space-x-1.5 sm:space-x-3.5 min-w-0">
+                <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-1.5 sm:p-3 rounded-xl sm:rounded-2xl shadow-lg shadow-teal-500/20 text-slate-950 flex-shrink-0">
+                  <HandCoins className="w-4 h-4 sm:w-7 sm:h-7 stroke-[2.5]" />
                 </div>
-              </div>
-            </div>
 
-            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/40 text-slate-700 dark:text-slate-300 p-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-extrabold transition shadow-sm"
-                title="Invite Friends"
-              >
-                <Share2 className="w-3.5 h-3.5 text-teal-500" />
-                <span className="hidden md:inline">Invite</span>
-              </button>
+                <div className="flex items-center gap-1 sm:gap-3.5 min-w-0">
+                  <h1 className="text-base sm:text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent truncate leading-tight flex-shrink-0">
+                    Tripwise
+                  </h1>
 
-              {isAdmin && userProfile ? (
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-xl sm:rounded-2xl">
-                    {userProfile.photoURL ? (
-                      <img
-                        src={userProfile.photoURL}
-                        alt={userProfile.name}
-                        className="w-4 h-4 sm:w-6 sm:h-6 rounded-full object-cover border border-teal-500/30"
-                      />
-                    ) : (
-                      <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-[9px] sm:text-[10px] flex items-center justify-center">
-                        {userProfile.name[0]}
-                      </div>
-                    )}
-                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 hidden md:inline truncate max-w-[80px]">
-                      {userProfile.name}
-                    </span>
+                  <div className="min-w-0">
+                    <GlassTripDropdown
+                      trips={trips}
+                      activeTripId={activeTripId}
+                      onSelectTrip={setActiveTripId}
+                      onOpenNewTripModal={() => setShowNewTripModal(true)}
+                      isAdmin={isAdmin}
+                    />
                   </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center gap-1 p-1.5 sm:px-3 sm:py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 rounded-xl text-xs font-bold transition shadow-sm"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span className="hidden md:inline">Sign Out</span>
-                  </button>
                 </div>
-              ) : (
+              </div>
+
+              <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
                 <button
-                  onClick={handleGoogleSignIn}
-                  disabled={authLoading}
-                  className="flex items-center gap-1 px-2 py-1.5 sm:px-3.5 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-xl text-xs font-extrabold transition shadow-md shadow-teal-500/10 disabled:opacity-50"
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/40 text-slate-700 dark:text-slate-300 p-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-extrabold transition shadow-sm"
+                  title="Invite Friends"
                 >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span className="truncate max-w-[70px] sm:max-w-none">{authLoading ? "Signing..." : "Sign in"}</span>
+                  <Share2 className="w-3.5 h-3.5 text-teal-500" />
+                  <span className="hidden md:inline">Invite</span>
                 </button>
-              )}
 
-              <button
-                onClick={() => setShowNewTripModal(true)}
-                className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 p-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-extrabold transition shadow-sm"
-                title="Create New Trip"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                <span className="hidden md:inline">New Trip</span>
-              </button>
-
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
-              >
-                {darkMode ? (
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="max-w-6xl mx-auto px-3 sm:px-6 flex border-t border-slate-200/60 dark:border-slate-800/60 overflow-x-auto no-scrollbar">
-            {[
-              { id: "dashboard", label: "Dashboard", icon: PieChart },
-              {
-                id: "settlements",
-                label: "Settlements",
-                icon: ArrowRightLeft,
-                badge: settlements.length,
-              },
-              {
-                id: "members",
-                label: "Members",
-                icon: Users,
-                badge: currentTrip.members?.length || 0,
-              },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 py-2.5 px-3.5 sm:py-3.5 sm:px-5 text-xs sm:text-sm font-extrabold border-b-[3px] transition-all flex-shrink-0 whitespace-nowrap ${
-                    isActive
-                      ? "border-teal-500 text-teal-600 dark:text-teal-400"
-                      : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                  }`}
-                >
-                  <Icon className="w-4 h-4 stroke-[2.5]" />
-                  <span>{tab.label}</span>
-                  {tab.badge !== undefined && (
-                    <span
-                      className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold ${
-                        isActive
-                          ? "bg-teal-500/20 text-teal-700 dark:text-teal-300"
-                          : "bg-slate-200 dark:bg-slate-800 text-slate-500"
-                      }`}
+                {isAdmin && userProfile ? (
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-xl sm:rounded-2xl">
+                      {userProfile.photoURL ? (
+                        <img
+                          src={userProfile.photoURL}
+                          alt={userProfile.name}
+                          className="w-4 h-4 sm:w-6 sm:h-6 rounded-full object-cover border border-teal-500/30"
+                        />
+                      ) : (
+                        <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-[9px] sm:text-[10px] flex items-center justify-center">
+                          {userProfile.name[0]}
+                        </div>
+                      )}
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 hidden md:inline truncate max-w-[80px]">
+                        {userProfile.name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-1 p-1.5 sm:px-3 sm:py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 rounded-xl text-xs font-bold transition shadow-sm"
+                      title="Sign Out"
                     >
-                      {tab.badge}
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span className="hidden md:inline">Sign Out</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleGoogleSignIn}
+                    disabled={authLoading}
+                    className="flex items-center gap-1 px-2 py-1.5 sm:px-3.5 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-xl text-xs font-extrabold transition shadow-md shadow-teal-500/10 disabled:opacity-50"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span className="truncate max-w-[70px] sm:max-w-none">
+                      {authLoading ? "Signing..." : "Sign in"}
                     </span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowNewTripModal(true)}
+                  className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 p-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-extrabold transition shadow-sm"
+                  title="Create New Trip"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span className="hidden md:inline">New Trip</span>
+                </button>
+
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+                >
+                  {darkMode ? (
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  ) : (
+                    <Moon className="w-3.5 h-3.5" />
                   )}
                 </button>
-              );
-            })}
-          </div>
-        </header>
-
-        <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
-          {currentTrip.image && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full h-48 sm:h-72 md:h-80 rounded-3xl sm:rounded-[2.5rem] overflow-hidden relative shadow-xl shadow-teal-500/5 group border border-slate-200/50 dark:border-slate-800/50"
-              style={{ transform: "translateZ(0)" }}
-            >
-              <img
-                src={currentTrip.image}
-                alt={currentTrip.name}
-                className="w-full h-full object-cover object-center transition duration-700 group-hover:scale-105"
-                style={{ imageRendering: "auto" }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent flex flex-col justify-end p-4 sm:p-8">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-teal-500/25 backdrop-blur-md text-teal-300 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider border border-teal-500/40">
-                    Active Trip
-                  </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-slate-300">
-                    Trip created by {currentTrip.creatorName || "Naqeeb"}
-                  </span>
-                </div>
-                <h2 className="text-xl sm:text-4xl md:text-5xl font-black text-white tracking-tight truncate">
-                  {currentTrip.name}
-                </h2>
-              </div>
-            </motion.div>
-          )}
-
-          {!currentTrip.image && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100">
-                  {currentTrip.name}
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Trip created by {currentTrip.creatorName || "Naqeeb"}
-                </p>
               </div>
             </div>
-          )}
 
-          <AnimatePresence mode="wait">
-            {activeTab === "dashboard" && (
+            <div className="max-w-6xl mx-auto px-3 sm:px-6 flex border-t border-slate-200/60 dark:border-slate-800/60 overflow-x-auto no-scrollbar">
+              {[
+                { id: "dashboard", label: "Dashboard", icon: PieChart },
+                {
+                  id: "settlements",
+                  label: "Settlements",
+                  icon: ArrowRightLeft,
+                  badge: settlements.length,
+                },
+                {
+                  id: "members",
+                  label: "Members",
+                  icon: Users,
+                  badge: currentTrip.members?.length || 0,
+                },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 py-2.5 px-3.5 sm:py-3.5 sm:px-5 text-xs sm:text-sm font-extrabold border-b-[3px] transition-all flex-shrink-0 whitespace-nowrap ${
+                      isActive
+                        ? "border-teal-500 text-teal-600 dark:text-teal-400"
+                        : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 stroke-[2.5]" />
+                    <span>{tab.label}</span>
+                    {tab.badge !== undefined && (
+                      <span
+                        className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold ${
+                          isActive
+                            ? "bg-teal-500/20 text-teal-700 dark:text-teal-300"
+                            : "bg-slate-200 dark:bg-slate-800 text-slate-500"
+                        }`}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </header>
+
+          <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+            {currentTrip.image && (
               <motion.div
-                key="dashboard"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25, ease: "easeInOut" }}
-                className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8"
+                className="w-full h-48 sm:h-72 md:h-80 rounded-3xl sm:rounded-[2.5rem] overflow-hidden relative shadow-xl shadow-teal-500/5 group border border-slate-200/50 dark:border-slate-800/50"
+                style={{ transform: "translateZ(0)" }}
               >
-                <div className="lg:col-span-5 space-y-4 sm:space-y-6">
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
-                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Total Spent
-                      </p>
-                      <h3 className="text-lg sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate">
-                        ₹{totalSpent.toLocaleString()}
-                      </h3>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
-                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Per Person
-                      </p>
-                      <h3 className="text-lg sm:text-3xl font-black text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate">
-                        ₹{Math.round(perPersonShare).toLocaleString()}
-                      </h3>
-                    </div>
+                <img
+                  src={currentTrip.image}
+                  alt={currentTrip.name}
+                  className="w-full h-full object-cover object-center transition duration-700 group-hover:scale-105"
+                  style={{ imageRendering: "auto" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent flex flex-col justify-end p-4 sm:p-8">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-teal-500/25 backdrop-blur-md text-teal-300 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider border border-teal-500/40">
+                      Active Trip
+                    </span>
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-300">
+                      Trip created by {currentTrip.creatorName || "Naqeeb"}
+                    </span>
                   </div>
+                  <h2 className="text-xl sm:text-4xl md:text-5xl font-black text-white tracking-tight truncate">
+                    {currentTrip.name}
+                  </h2>
+                </div>
+              </motion.div>
+            )}
 
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
-                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
-                      <Plus className="w-5 h-5 text-teal-500 stroke-[3]" />
-                      Add Expense
-                    </h2>
+            {!currentTrip.image && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+                    {currentTrip.name}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Trip created by {currentTrip.creatorName || "Naqeeb"}
+                  </p>
+                </div>
+              </div>
+            )}
 
-                    <form
-                      onSubmit={handleAddExpense}
-                      className="space-y-3.5 sm:space-y-4"
-                    >
-                      <div>
-                        <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                          Expense Title
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Dinner, Fuel, Villa"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
-                        />
-
-                        <AnimatePresence>
-                          {appError && (
-                            <motion.span
-                              initial={{ opacity: 0, y: -4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -4 }}
-                              className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1 block animate-pulse"
-                            >
-                              ⚠️ {appError}
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
+            <AnimatePresence mode="wait">
+              {activeTab === "dashboard" && (
+                <motion.div
+                  key="dashboard"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8"
+                >
+                  <div className="lg:col-span-5 space-y-4 sm:space-y-6">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
+                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                          Total Spent
+                        </p>
+                        <h3 className="text-lg sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate">
+                          ₹{totalSpent.toLocaleString()}
+                        </h3>
                       </div>
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
+                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                          Per Person
+                        </p>
+                        <h3 className="text-lg sm:text-3xl font-black text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate">
+                          ₹{Math.round(perPersonShare).toLocaleString()}
+                        </h3>
+                      </div>
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
+                      <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
+                        <Plus className="w-5 h-5 text-teal-500 stroke-[3]" />
+                        Add Expense
+                      </h2>
+
+                      <form
+                        onSubmit={handleAddExpense}
+                        className="space-y-3.5 sm:space-y-4"
+                      >
                         <div>
                           <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                            Amount (₹)
+                            Expense Title
                           </label>
                           <input
-                            type="number"
-                            placeholder="0"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            type="text"
+                            placeholder="e.g. Dinner, Fuel, Villa"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
                           />
+
+                          <AnimatePresence>
+                            {appError && (
+                              <motion.span
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1 block animate-pulse"
+                              >
+                                ⚠️ {appError}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                              Amount (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={amount}
+                              onChange={(e) => setAmount(e.target.value)}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                              Paid By
+                            </label>
+                            <GlassMemberDropdown
+                              members={currentTrip.members || []}
+                              selectedMember={paidBy}
+                              onSelectMember={setPaidBy}
+                            />
+                          </div>
                         </div>
 
                         <div>
                           <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                            Paid By
+                            Category
                           </label>
-                          <GlassMemberDropdown
-                            members={currentTrip.members || []}
-                            selectedMember={paidBy}
-                            onSelectMember={setPaidBy}
+                          <GlassCategoryDropdown
+                            categories={CATEGORIES}
+                            selectedCategory={category}
+                            onSelectCategory={setCategory}
                           />
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                          Category
-                        </label>
-                        <GlassCategoryDropdown
-                          categories={CATEGORIES}
-                          selectedCategory={category}
-                          onSelectCategory={setCategory}
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
-                      >
-                        <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
-                        Add Expense
-                      </button>
-                    </form>
+                        <button
+                          type="submit"
+                          className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
+                        >
+                          <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                          Add Expense
+                        </button>
+                      </form>
+                    </div>
                   </div>
-                </div>
 
-                <div className="lg:col-span-7">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
-                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
-                      <Receipt className="w-5 h-5 text-slate-400" />
-                      Expense Feed ({currentExpenses.length})
-                    </h2>
+                  <div className="lg:col-span-7">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
+                      <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
+                        <Receipt className="w-5 h-5 text-slate-400" />
+                        Expense Feed ({currentExpenses.length})
+                      </h2>
 
-                    <div className="space-y-3">
-                      {currentExpenses.length === 0 ? (
-                        <p className="text-xs sm:text-sm font-semibold text-slate-400 text-center py-10">
-                          No expenses added to this trip yet.
+                      <div className="space-y-3">
+                        {currentExpenses.length === 0 ? (
+                          <p className="text-xs sm:text-sm font-semibold text-slate-400 text-center py-10">
+                            No expenses added to this trip yet.
+                          </p>
+                        ) : (
+                          currentExpenses.map((exp) => (
+                            <ExpenseCard
+                              key={exp.id}
+                              expense={exp}
+                              onSettleExpense={handleSettleExpenseCard}
+                              getAvatarForMember={getAvatarForMember}
+                            />
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === "settlements" && (
+                <motion.div
+                  key="settlements"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="space-y-6 sm:space-y-8 max-w-4xl mx-auto"
+                >
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 sm:mb-6">
+                      <div>
+                        <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
+                          Optimized Settlement Plan
+                        </h2>
+                        <p className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
+                          Minimum transactions required to balance all debts for{" "}
+                          <strong>{currentTrip.name}</strong>.
                         </p>
+                      </div>
+
+                      <span className="self-start sm:self-center text-[10px] sm:text-xs bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 px-3 py-1 rounded-full font-extrabold">
+                        {
+                          settlements.filter((s) => !settledIds.includes(s.id))
+                            .length
+                        }{" "}
+                        Pending
+                      </span>
+                    </div>
+
+                    <div className="space-y-3.5 sm:space-y-4">
+                      {settlements.length === 0 ? (
+                        <div className="text-center py-10 sm:py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-4">
+                          <CheckCircle2 className="w-10 h-10 sm:w-14 sm:h-14 text-teal-500 mx-auto mb-3 opacity-90" />
+                          <p className="text-xs sm:text-base font-extrabold text-slate-800 dark:text-slate-200">
+                            Trip Fully Settled!
+                          </p>
+                          <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-1">
+                            Nobody owes any money right now.
+                          </p>
+                        </div>
                       ) : (
-                        currentExpenses.map((exp) => (
-                          <ExpenseCard
-                            key={exp.id}
-                            expense={exp}
-                            onSettleExpense={handleSettleExpenseCard}
-                            getAvatarForMember={getAvatarForMember}
-                          />
-                        ))
+                        settlements.map((s) => {
+                          const isSettled = settledIds.includes(s.id);
+                          const details = settlementDetailsMap[s.id];
+                          const fromAvatar = getAvatarForMember(s.from);
+                          const toAvatar = getAvatarForMember(s.to);
+
+                          return (
+                            <div
+                              key={s.id}
+                              className="flex flex-col p-3.5 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 shadow-sm transition-all gap-3.5"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                                <div className="flex items-center justify-around sm:justify-start space-x-3 sm:space-x-4">
+                                  <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                                    {fromAvatar ? (
+                                      <img
+                                        src={fromAvatar}
+                                        alt={s.from}
+                                        className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-rose-500/40 shadow-sm"
+                                      />
+                                    ) : (
+                                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 font-black text-xs sm:text-sm flex items-center justify-center">
+                                        {s.from[0]}
+                                      </div>
+                                    )}
+                                    <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
+                                      {s.from}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex flex-col items-center px-1">
+                                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 stroke-[3]" />
+                                    <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">
+                                      Owes
+                                    </span>
+                                  </div>
+
+                                  <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                                    {toAvatar ? (
+                                      <img
+                                        src={toAvatar}
+                                        alt={s.to}
+                                        className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-emerald-500/40 shadow-sm"
+                                      />
+                                    ) : (
+                                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black text-xs sm:text-sm flex items-center justify-center">
+                                        {s.to[0]}
+                                      </div>
+                                    )}
+                                    <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
+                                      {s.to}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between sm:justify-end space-x-3 pt-2 sm:pt-0 border-t sm:border-0 border-slate-200/60 dark:border-slate-800/60">
+                                  <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400 mr-2">
+                                    ₹{s.amount.toLocaleString()}
+                                  </span>
+
+                                  {isSettled ? (
+                                    <div className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/25 flex items-center gap-1.5">
+                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                      <span>Settled</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <motion.button
+                                        type="button"
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() =>
+                                          setActiveUpiSettlement(s)
+                                        }
+                                        className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-md shadow-teal-500/20 transition-all"
+                                      >
+                                        UPI
+                                      </motion.button>
+
+                                      <motion.button
+                                        type="button"
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => handleCashSettle(s)}
+                                        className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
+                                      >
+                                        Cash
+                                      </motion.button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {isSettled && details && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  transition={{ duration: 0.3 }}
+                                  className="mt-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] sm:text-xs bg-emerald-500/5 p-2.5 sm:p-3 rounded-2xl border border-emerald-500/20"
+                                >
+                                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                                    <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                    <span>
+                                      {details.settledAt} ({details.settledDate}
+                                      )
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                                    <CreditCard className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                    <span>{details.method}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                                    <Hash className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                    <span>{details.transactionId}</span>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
 
-            {activeTab === "settlements" && (
-              <motion.div
-                key="settlements"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25, ease: "easeInOut" }}
-                className="space-y-6 sm:space-y-8 max-w-4xl mx-auto"
-              >
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 sm:mb-6">
-                    <div>
-                      <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
-                        Optimized Settlement Plan
-                      </h2>
-                      <p className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
-                        Minimum transactions required to balance all debts for{" "}
-                        <strong>{currentTrip.name}</strong>.
-                      </p>
-                    </div>
+              {activeTab === "members" && (
+                <motion.div
+                  key="members"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="max-w-2xl mx-auto space-y-6"
+                >
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
+                    <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
+                      <Users className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
+                      Trip Members ({currentTrip.members?.length || 0})
+                    </h2>
 
-                    <span className="self-start sm:self-center text-[10px] sm:text-xs bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 px-3 py-1 rounded-full font-extrabold">
-                      {
-                        settlements.filter((s) => !settledIds.includes(s.id))
-                          .length
-                      }{" "}
-                      Pending
-                    </span>
-                  </div>
-
-                  <div className="space-y-3.5 sm:space-y-4">
-                    {settlements.length === 0 ? (
-                      <div className="text-center py-10 sm:py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-4">
-                        <CheckCircle2 className="w-10 h-10 sm:w-14 sm:h-14 text-teal-500 mx-auto mb-3 opacity-90" />
-                        <p className="text-xs sm:text-base font-extrabold text-slate-800 dark:text-slate-200">
-                          Trip Fully Settled!
-                        </p>
-                        <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-1">
-                          Nobody owes any money right now.
-                        </p>
-                      </div>
-                    ) : (
-                      settlements.map((s) => {
-                        const isSettled = settledIds.includes(s.id);
-                        const details = settlementDetailsMap[s.id];
-                        const fromAvatar = getAvatarForMember(s.from);
-                        const toAvatar = getAvatarForMember(s.to);
-
+                    <div className="space-y-2.5 sm:space-y-3 mb-6">
+                      {currentTrip.members?.map((m, idx) => {
+                        const name = typeof m === "string" ? m : m.name;
+                        const avatar = typeof m === "object" ? m.avatar : null;
                         return (
                           <div
-                            key={s.id}
-                            className="flex flex-col p-3.5 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 shadow-sm transition-all gap-3.5"
+                            key={idx}
+                            className="flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-                              <div className="flex items-center justify-around sm:justify-start space-x-3 sm:space-x-4">
-                                <div className="flex flex-col items-center gap-1 min-w-[60px]">
-                                  {fromAvatar ? (
-                                    <img
-                                      src={fromAvatar}
-                                      alt={s.from}
-                                      className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-rose-500/40 shadow-sm"
-                                    />
-                                  ) : (
-                                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 font-black text-xs sm:text-sm flex items-center justify-center">
-                                      {s.from[0]}
-                                    </div>
-                                  )}
-                                  <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
-                                    {s.from}
-                                  </span>
+                            <div className="flex items-center space-x-3 min-w-0">
+                              {avatar ? (
+                                <img
+                                  src={avatar}
+                                  alt={name}
+                                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-teal-500/30 flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 font-extrabold text-xs flex items-center justify-center flex-shrink-0">
+                                  {name[0]}
                                 </div>
-
-                                <div className="flex flex-col items-center px-1">
-                                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 stroke-[3]" />
-                                  <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">
-                                    Owes
-                                  </span>
-                                </div>
-
-                                <div className="flex flex-col items-center gap-1 min-w-[60px]">
-                                  {toAvatar ? (
-                                    <img
-                                      src={toAvatar}
-                                      alt={s.to}
-                                      className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-emerald-500/40 shadow-sm"
-                                    />
-                                  ) : (
-                                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black text-xs sm:text-sm flex items-center justify-center">
-                                      {s.to[0]}
-                                    </div>
-                                  )}
-                                  <span className="text-[11px] sm:text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[80px] text-center">
-                                    {s.to}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between sm:justify-end space-x-3 pt-2 sm:pt-0 border-t sm:border-0 border-slate-200/60 dark:border-slate-800/60">
-                                <span className="text-base sm:text-xl font-black text-teal-600 dark:text-teal-400 mr-2">
-                                  ₹{s.amount.toLocaleString()}
-                                </span>
-
-                                {isSettled ? (
-                                  <div className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/25 flex items-center gap-1.5">
-                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                    <span>Settled</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <motion.button
-                                      type="button"
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => setActiveUpiSettlement(s)}
-                                      className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-md shadow-teal-500/20 transition-all"
-                                    >
-                                      UPI
-                                    </motion.button>
-
-                                    <motion.button
-                                      type="button"
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => handleCashSettle(s)}
-                                      className="text-[11px] sm:text-xs font-extrabold px-4 py-2.5 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
-                                    >
-                                      Cash
-                                    </motion.button>
-                                  </div>
-                                )}
-                              </div>
+                              )}
+                              <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                                {name}
+                              </span>
                             </div>
-
-                            {isSettled && details && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                transition={{ duration: 0.3 }}
-                                className="mt-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] sm:text-xs bg-emerald-500/5 p-2.5 sm:p-3 rounded-2xl border border-emerald-500/20"
-                              >
-                                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                                  <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                  <span>
-                                    {details.settledAt} ({details.settledDate})
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                                  <CreditCard className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                  <span>{details.method}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                                  <Hash className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                  <span>{details.transactionId}</span>
-                                </div>
-                              </motion.div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {activeTab === "members" && (
-              <motion.div
-                key="members"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25, ease: "easeInOut" }}
-                className="max-w-2xl mx-auto space-y-6"
-              >
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
-                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
-                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
-                    Trip Members ({currentTrip.members?.length || 0})
-                  </h2>
-
-                  <div className="space-y-2.5 sm:space-y-3 mb-6">
-                    {currentTrip.members?.map((m, idx) => {
-                      const name = typeof m === "string" ? m : m.name;
-                      const avatar = typeof m === "object" ? m.avatar : null;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
-                        >
-                          <div className="flex items-center space-x-3 min-w-0">
-                            {avatar ? (
-                              <img
-                                src={avatar}
-                                alt={name}
-                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-teal-500/30 flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 font-extrabold text-xs flex items-center justify-center flex-shrink-0">
-                                {name[0]}
-                              </div>
-                            )}
-                            <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                              {name}
+                            <span className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 px-2.5 py-1 rounded-full flex-shrink-0">
+                              Member
                             </span>
                           </div>
-                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 px-2.5 py-1 rounded-full flex-shrink-0">
-                            Member
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
 
-                  <form
-                    onSubmit={handleAddMember}
-                    className="space-y-3 sm:space-y-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60"
-                  >
-                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Add New Member
-                    </p>
+                    <form
+                      onSubmit={handleAddMember}
+                      className="space-y-3 sm:space-y-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60"
+                    >
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Add New Member
+                      </p>
 
-                    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                      <div className="flex gap-3 items-center">
-                        <label className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden flex-shrink-0">
-                          {newMemberAvatar ? (
-                            <img
-                              src={newMemberAvatar}
-                              alt="Avatar preview"
-                              className="w-full h-full object-cover"
+                      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                        <div className="flex gap-3 items-center">
+                          <label className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden flex-shrink-0">
+                            {newMemberAvatar ? (
+                              <img
+                                src={newMemberAvatar}
+                                alt="Avatar preview"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-teal-500 transition" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) =>
+                                handleCompressedImageUpload(
+                                  e,
+                                  setNewMemberAvatar,
+                                )
+                              }
+                              className="hidden"
                             />
-                          ) : (
-                            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-teal-500 transition" />
-                          )}
+                          </label>
+
                           <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) =>
-                              handleCompressedImageUpload(e, setNewMemberAvatar)
-                            }
-                            className="hidden"
+                            type="text"
+                            placeholder="Add member name..."
+                            value={newMemberName}
+                            onChange={(e) => setNewMemberName(e.target.value)}
+                            className="flex-1 sm:hidden bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
                           />
-                        </label>
+                        </div>
 
                         <input
                           type="text"
                           placeholder="Add member name..."
                           value={newMemberName}
                           onChange={(e) => setNewMemberName(e.target.value)}
-                          className="flex-1 sm:hidden bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                          className="hidden sm:block flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
                         />
+
+                        <button
+                          type="submit"
+                          className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold transition shadow-sm"
+                        >
+                          Add
+                        </button>
                       </div>
+                    </form>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </main>
+        </div>
 
-                      <input
-                        type="text"
-                        placeholder="Add member name..."
-                        value={newMemberName}
-                        onChange={(e) => setNewMemberName(e.target.value)}
-                        className="hidden sm:block flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                      />
-
-                      <button
-                        type="submit"
-                        className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold transition shadow-sm"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </form>
+        {/* FOOTER */}
+        <footer class="mt-12 sm:mt-20 border-t border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
+          <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div class="flex flex-col items-center justify-center text-center space-y-4">
+              <div class="flex flex-col items-center space-y-2 w-full">
+                <div class="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-2.5 rounded-2xl shadow-md shadow-teal-500/20 text-slate-950">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="lucide lucide-hand-coins w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]"
+                    aria-hidden="true"
+                  >
+                    <path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"></path>
+                    <path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"></path>
+                    <path d="m2 16 6 6"></path>
+                    <circle cx="16" cy="9" r="2.9"></circle>
+                    <circle cx="6" cy="5" r="3"></circle>
+                  </svg>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </main>
+                <div class="w-full overflow-hidden">
+                  <h3 class="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent">
+                    Tripwise
+                  </h3>
+                  <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap mt-1">
+                    Smart group expense splitting &amp; instant settlement
+                    tracking.
+                  </p>
+                </div>
+              </div>
+              <div class="pt-1">
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 flex-wrap">
+                  <span>
+                    © 2026{" "}
+                    <strong class="text-slate-800 dark:text-slate-200">
+                      Mohd Naqeeb
+                    </strong>
+                    . All rights reserved.
+                  </span>
+                  <span class="hidden sm:inline">|</span>
+                  <span class="flex items-center gap-1">
+                    Connect on
+                    <a
+                      href="https://www.linkedin.com/in/your-linkedin-profile"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="LinkedIn Profile"
+                      class="inline-flex items-center text-slate-600 dark:text-slate-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-4 h-4 fill-current"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M4.983 2.821a2.188 2.188 0 1 0 0 4.376 2.188 2.188 0 1 0 0-4.376M9.237 8.855v12.139h3.769v-6.003c0-1.584.298-3.118 2.262-3.118 1.937 0 1.961 1.811 1.961 3.218v5.904H21v-6.657c0-3.27-.704-5.783-4.526-5.783-1.835 0-3.065 1.007-3.568 1.96h-.051v-1.66zm-6.142 0H6.87v12.139H3.095z"></path>
+                      </svg>
+                    </a>
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </footer>
 
         {/* UPI PAYMENT MODAL */}
         <AnimatePresence>
@@ -1840,7 +1969,9 @@ function MainDashboardApp({ user: firebaseUser }) {
                 className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-sm shadow-2xl relative"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-extrabold text-white">Select Payment App</h3>
+                  <h3 className="text-base font-extrabold text-white">
+                    Select Payment App
+                  </h3>
                   <button
                     onClick={() => setActiveUpiSettlement(null)}
                     className="text-slate-400 hover:text-white text-xs font-bold"
@@ -1850,7 +1981,19 @@ function MainDashboardApp({ user: firebaseUser }) {
                 </div>
 
                 <p className="text-xs text-slate-400 mb-5">
-                  Pay <span className="text-white font-bold">₹{activeUpiSettlement.amount}</span> to <span className="text-teal-400 font-bold">{currentTrip.creatorName || "Naqeeb"}</span> (UPI: <span className="font-mono text-teal-300">{currentTrip.creatorUpi || "naqeeb@upi"}</span>)
+                  Pay{" "}
+                  <span className="text-white font-bold">
+                    ₹{activeUpiSettlement.amount}
+                  </span>{" "}
+                  to{" "}
+                  <span className="text-teal-400 font-bold">
+                    {currentTrip.creatorName || "Naqeeb"}
+                  </span>{" "}
+                  (UPI:{" "}
+                  <span className="font-mono text-teal-300">
+                    {currentTrip.creatorUpi || "naqeeb@upi"}
+                  </span>
+                  )
                 </p>
 
                 <div className="space-y-2.5 mb-5">
@@ -1909,7 +2052,9 @@ function MainDashboardApp({ user: firebaseUser }) {
                     <div className="p-2.5 bg-teal-500/10 text-teal-400 rounded-2xl border border-teal-500/20">
                       <PlaneTakeoff className="w-5 h-5" />
                     </div>
-                    <h3 className="text-lg font-extrabold text-white">Create New Trip</h3>
+                    <h3 className="text-lg font-extrabold text-white">
+                      Create New Trip
+                    </h3>
                   </div>
                   <button
                     onClick={() => setShowNewTripModal(false)}
@@ -1982,12 +2127,16 @@ function MainDashboardApp({ user: firebaseUser }) {
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={(e) => handleCompressedImageUpload(e, setNewTripPic)}
+                          onChange={(e) =>
+                            handleCompressedImageUpload(e, setNewTripPic)
+                          }
                           className="hidden"
                         />
                       </label>
                       <span className="text-xs text-slate-400">
-                        {newTripPic ? "Cover photo selected" : "Click to upload a custom banner image"}
+                        {newTripPic
+                          ? "Cover photo selected"
+                          : "Click to upload a custom banner image"}
                       </span>
                     </div>
                   </div>
@@ -2027,18 +2176,24 @@ function MainDashboardApp({ user: firebaseUser }) {
                   <Share2 className="w-6 h-6" />
                 </div>
 
-                <h3 className="text-lg font-extrabold text-white mb-1">Invite Friends</h3>
+                <h3 className="text-lg font-extrabold text-white mb-1">
+                  Invite Friends
+                </h3>
                 <p className="text-xs text-slate-400 mb-6">
-                  Share this trip link with your group members so they can join and track expenses.
+                  Share this trip link with your group members so they can join
+                  and track expenses.
                 </p>
 
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 flex items-center justify-between mb-5">
                   <span className="text-xs font-mono text-teal-400 truncate mr-2">
-                    {window.location.origin}/trip/join/{currentTrip.inviteToken || "tripwise_invite"}
+                    {window.location.origin}/trip/join/
+                    {currentTrip.inviteToken || "tripwise_invite"}
                   </span>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/trip/join/${currentTrip.inviteToken || "tripwise_invite"}`);
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/trip/join/${currentTrip.inviteToken || "tripwise_invite"}`,
+                      );
                       alert("Invite link copied to clipboard!");
                     }}
                     className="bg-teal-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 hover:bg-teal-400 transition"

@@ -1937,7 +1937,9 @@ function MainDashboardApp({ user: firebaseUser }) {
                   <span class="flex items-center gap-1">
                     Connect on
                     <a
-                      href="https://www.linkedin.com/in/your-linkedin-profile"
+                      href="https://linkedin.com/in/mohdnaqeeb
+
+"
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="LinkedIn Profile"

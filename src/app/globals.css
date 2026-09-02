@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 184, 166, 0.5);
+}
+
+/* Utility to hide scrollbar while preserving scroll functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Neumorphic 3D Card Tokens */
+.default-neumorphic {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 6px 6px 14px rgba(163, 177, 198, 0.25), -6px -6px 14px rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .default-neumorphic {
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 6px 6px 16px rgba(0, 0, 0, 0.45), -4px -4px 12px rgba(30, 41, 59, 0.3);
+  border: 1px solid rgba(30, 41, 59, 0.7);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settled-neumorphic {
+  background: rgba(16, 185, 129, 0.08);
+  box-shadow: inset 3px 3px 6px rgba(16, 185, 129, 0.15), inset -3px -3px 6px rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.dark .settled-neumorphic {
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.5), inset -3px -3px 6px rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(30, 41, 59, 0.7);
+}
+
+/* Exit Animation: Slide Left & Fade Out */
+.slide-left-fade-out {
+  animation: slideOutLeft 0.45s forwards cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideOutLeft {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 180px;
+    margin-bottom: 12px;
+    padding: 16px;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateX(-100%);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+}
+
+/* Pulse Glow Animation */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(20, 184, 166, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(20, 184, 166, 0.55);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.2s infinite ease-in-out;
+}
+
+/* Mobile Safe Bottom Spacing */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-bottom-dock {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+}

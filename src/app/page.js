@@ -1,0 +1,802 @@
+'use client';
+
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus,
+  PlaneTakeoff,
+  Share2,
+  Receipt,
+  PieChart,
+  ArrowRightLeft,
+  Users,
+  Compass,
+  Megaphone,
+  Lock,
+  Sparkles,
+  ShieldCheck,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import ExpenseCard from '@/components/ExpenseCard';
+import ExpenseFeed from '@/components/ExpenseFeed';
+import BudgetTracker from '@/components/BudgetTracker';
+import BudgetEstimator from '@/components/BudgetEstimator';
+import SettlementsTab from '@/components/SettlementsTab';
+import MembersTab from '@/components/MembersTab';
+import CommunityAnnouncements from '@/components/CommunityAnnouncements';
+import NewTripModal from '@/components/NewTripModal';
+import AuthModal from '@/components/AuthModal';
+import GlassMemberDropdown from '@/components/GlassMemberDropdown';
+import GlassCategoryDropdown, { CATEGORIES } from '@/components/GlassCategoryDropdown';
+
+import { supabase, isSupabaseConfigured, signOut } from '@/lib/supabase';
+import {
+  fetchUserTrips,
+  createTripInDb,
+  fetchTripExpenses,
+  createExpenseInDb,
+  deleteExpenseInDb,
+  addMemberInDb,
+  getUserStorageKey,
+} from '@/lib/supabaseDb';
+import { calculateNetBalances, calculateOptimalSettlements } from '@/lib/settlementMath';
+import { animateCounter } from '@/lib/animeAnimations';
+
+export default function Home() {
+  const [darkMode, setDarkMode] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [userProfile, setUserProfile] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  // Modals state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showNewTripModal, setShowNewTripModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+
+  // User-scoped data state (Initialized strictly empty - ZERO static mock data)
+  const [allTrips, setAllTrips] = useState([]);
+  const [activeTripId, setActiveTripId] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [settledIds, setSettledIds] = useState([]);
+  const [settlementDetailsMap, setSettlementDetailsMap] = useState({});
+
+  // Expense Form State
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [paidBy, setPaidBy] = useState('');
+  const [category, setCategory] = useState('Food');
+  const [appError, setAppError] = useState(null);
+
+  // Refs for animated numbers
+  const totalSpentRef = useRef(null);
+  const perPersonRef = useRef(null);
+
+  // 1. Supabase Auth State Listener
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          const profileObj = {
+            id: session.user.id,
+            email: session.user.email,
+            name:
+              session.user.user_metadata?.full_name ||
+              session.user.user_metadata?.name ||
+              session.user.email?.split('@')[0] ||
+              'User',
+            avatar:
+              session.user.user_metadata?.avatar_url ||
+              session.user.user_metadata?.picture ||
+              null,
+            upi_id: session.user.user_metadata?.upi_id || 'naqeeb@upi',
+          };
+          setUserProfile(profileObj);
+          loadUserData(profileObj.id);
+        } else {
+          handleUserLoggedOut();
+        }
+        setLoadingAuth(false);
+      });
+
+      const { data: authListener } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          if (session?.user) {
+            const profileObj = {
+              id: session.user.id,
+              email: session.user.email,
+              name:
+                session.user.user_metadata?.full_name ||
+                session.user.user_metadata?.name ||
+                session.user.email?.split('@')[0] ||
+                'User',
+              avatar:
+                session.user.user_metadata?.avatar_url ||
+                session.user.user_metadata?.picture ||
+                null,
+              upi_id: session.user.user_metadata?.upi_id || 'naqeeb@upi',
+            };
+            setUserProfile(profileObj);
+            loadUserData(profileObj.id);
+          } else {
+            handleUserLoggedOut();
+          }
+          setLoadingAuth(false);
+        }
+      );
+
+      return () => {
+        authListener?.subscription?.unsubscribe();
+      };
+    } else {
+      setLoadingAuth(false);
+    }
+  }, []);
+
+  // Helper when user logs out - Wipes all private data immediately
+  const handleUserLoggedOut = () => {
+    setUserProfile(null);
+    setAllTrips([]);
+    setActiveTripId(null);
+    setExpenses([]);
+    setSettledIds([]);
+    setSettlementDetailsMap({});
+  };
+
+  // Load User Data strictly for the authenticated user ID
+  const loadUserData = async (userId) => {
+    if (!userId) return;
+    try {
+      const trips = await fetchUserTrips(userId);
+      setAllTrips(trips);
+      if (trips.length > 0) {
+        const firstTripId = trips[0].id;
+        setActiveTripId(firstTripId);
+        const tripExps = await fetchTripExpenses(firstTripId, userId);
+        setExpenses(tripExps);
+      } else {
+        setActiveTripId(null);
+        setExpenses([]);
+      }
+
+      // Load settled state from user storage
+      if (typeof window !== 'undefined') {
+        const savedSettled = localStorage.getItem(getUserStorageKey(userId, 'settled_ids'));
+        if (savedSettled) setSettledIds(JSON.parse(savedSettled));
+
+        const savedMap = localStorage.getItem(getUserStorageKey(userId, 'settlement_map'));
+        if (savedMap) setSettlementDetailsMap(JSON.parse(savedMap));
+      }
+    } catch (err) {
+      console.warn('Error loading user data:', err);
+    }
+  };
+
+  // Switch Active Trip and load its expenses
+  const handleSelectTrip = async (tripId) => {
+    setActiveTripId(tripId);
+    if (userProfile?.id && tripId) {
+      const tripExps = await fetchTripExpenses(tripId, userProfile.id);
+      setExpenses(tripExps);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    handleUserLoggedOut();
+  };
+
+  const currentTrip = useMemo(() => {
+    if (!allTrips || allTrips.length === 0) return null;
+    return allTrips.find((t) => String(t.id) === String(activeTripId)) || allTrips[0];
+  }, [allTrips, activeTripId]);
+
+  useEffect(() => {
+    if (currentTrip && currentTrip.members?.length > 0) {
+      const firstMemberName =
+        typeof currentTrip.members[0] === 'string'
+          ? currentTrip.members[0]
+          : currentTrip.members[0].name;
+      setPaidBy(firstMemberName);
+    }
+  }, [currentTrip]);
+
+  const currentExpenses = useMemo(() => {
+    if (!currentTrip) return [];
+    return expenses.filter((e) => String(e.tripId) === String(currentTrip.id));
+  }, [expenses, currentTrip]);
+
+  // Compute Settlement Math
+  const { totalSpent, perPersonShare, netBalances } = useMemo(() => {
+    if (!currentTrip) return { totalSpent: 0, perPersonShare: 0, netBalances: {} };
+    return calculateNetBalances(currentTrip.members || [], currentExpenses);
+  }, [currentTrip, currentExpenses]);
+
+  const settlements = useMemo(() => {
+    return calculateOptimalSettlements(netBalances);
+  }, [netBalances]);
+
+  // Animate metrics counter with Anime.js on change
+  useEffect(() => {
+    if (totalSpentRef.current) {
+      animateCounter(totalSpentRef.current, 0, totalSpent, '₹', 800);
+    }
+    if (perPersonRef.current) {
+      animateCounter(perPersonRef.current, 0, Math.round(perPersonShare), '₹', 800);
+    }
+  }, [totalSpent, perPersonShare]);
+
+  const getAvatarForMember = (memberName) => {
+    const memberObj = currentTrip?.members?.find(
+      (m) => (typeof m === 'string' ? m : m.name) === memberName
+    );
+    return typeof memberObj === 'object'
+      ? memberObj?.avatar_url || memberObj?.avatar
+      : null;
+  };
+
+  // Handlers
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    if (!title || title.trim() === '') {
+      setAppError('Expense title cannot be empty.');
+      return;
+    }
+
+    const numAmount = parseFloat(amount);
+    if (!numAmount || numAmount <= 0) {
+      setAppError('Please enter a valid expense amount.');
+      return;
+    }
+
+    if (!currentTrip) return;
+
+    const newExp = await createExpenseInDb(
+      {
+        tripId: currentTrip.id,
+        title: title.trim(),
+        amount: numAmount,
+        paidBy: paidBy || currentTrip.members?.[0]?.name || userProfile?.name || 'User',
+        category: category || 'Food',
+      },
+      userProfile?.id
+    );
+
+    setExpenses([newExp, ...expenses]);
+    setTitle('');
+    setAmount('');
+    setAppError(null);
+  };
+
+  const handleSettleExpenseCard = async (expenseId) => {
+    if (currentTrip) {
+      await deleteExpenseInDb(expenseId, currentTrip.id, userProfile?.id);
+      setExpenses((prev) => prev.filter((exp) => String(exp.id) !== String(expenseId)));
+    }
+  };
+
+  const handleCreateTrip = async (tripData) => {
+    if (!userProfile) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const createdTrip = await createTripInDb(tripData, userProfile.id);
+    const updatedTrips = [createdTrip, ...allTrips];
+    setAllTrips(updatedTrips);
+    setActiveTripId(createdTrip.id);
+    setExpenses([]);
+    setShowNewTripModal(false);
+  };
+
+  const handleAddMember = async (memberObj) => {
+    if (!currentTrip) return;
+    await addMemberInDb(currentTrip.id, memberObj, userProfile?.id);
+
+    const updatedMembers = [...(currentTrip.members || []), memberObj];
+    const updatedTrips = allTrips.map((t) => {
+      if (String(t.id) === String(currentTrip.id)) {
+        return { ...t, members: updatedMembers };
+      }
+      return t;
+    });
+    setAllTrips(updatedTrips);
+
+    // Save to user storage
+    if (userProfile?.id && typeof window !== 'undefined') {
+      localStorage.setItem(getUserStorageKey(userProfile.id, 'trips'), JSON.stringify(updatedTrips));
+    }
+  };
+
+  const handleUpdateBudgetLimits = ({ daily_budget_limit, expense_budget_limit }) => {
+    if (!currentTrip) return;
+    const updatedTrips = allTrips.map((t) => {
+      if (String(t.id) === String(currentTrip.id)) {
+        return { ...t, daily_budget_limit, expense_budget_limit };
+      }
+      return t;
+    });
+    setAllTrips(updatedTrips);
+    if (userProfile?.id && typeof window !== 'undefined') {
+      localStorage.setItem(getUserStorageKey(userProfile.id, 'trips'), JSON.stringify(updatedTrips));
+    }
+  };
+
+  const handleCashSettle = (settlement) => {
+    const dynamicData = {
+      settledAt: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      settledDate: new Date().toLocaleDateString(),
+      method: 'Cash Settlement',
+      transactionId: `CASH-${Math.floor(100000 + Math.random() * 900000)}`,
+    };
+
+    const updatedSettled = [...settledIds, settlement.id];
+    const updatedMap = { ...settlementDetailsMap, [settlement.id]: dynamicData };
+    setSettledIds(updatedSettled);
+    setSettlementDetailsMap(updatedMap);
+
+    if (userProfile?.id && typeof window !== 'undefined') {
+      localStorage.setItem(getUserStorageKey(userProfile.id, 'settled_ids'), JSON.stringify(updatedSettled));
+      localStorage.setItem(getUserStorageKey(userProfile.id, 'settlement_map'), JSON.stringify(updatedMap));
+    }
+  };
+
+  const handleFinalizeUpiSettle = (settlement) => {
+    const dynamicData = {
+      settledAt: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      settledDate: new Date().toLocaleDateString(),
+      method: 'Instant UPI Transfer',
+      transactionId: `UPI-${Math.floor(100000 + Math.random() * 900000)}`,
+    };
+
+    const updatedSettled = [...settledIds, settlement.id];
+    const updatedMap = { ...settlementDetailsMap, [settlement.id]: dynamicData };
+    setSettledIds(updatedSettled);
+    setSettlementDetailsMap(updatedMap);
+
+    if (userProfile?.id && typeof window !== 'undefined') {
+      localStorage.setItem(getUserStorageKey(userProfile.id, 'settled_ids'), JSON.stringify(updatedSettled));
+      localStorage.setItem(getUserStorageKey(userProfile.id, 'settlement_map'), JSON.stringify(updatedMap));
+    }
+  };
+
+  const tripCover = currentTrip?.image_url || currentTrip?.image;
+
+  return (
+    <div className={darkMode ? 'dark' : ''}>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between transition-colors duration-300">
+        <div>
+          {/* Main Header */}
+          <Header
+            trips={allTrips}
+            activeTripId={activeTripId}
+            onSelectTrip={handleSelectTrip}
+            onOpenNewTripModal={() => {
+              if (!userProfile) setShowAuthModal(true);
+              else setShowNewTripModal(true);
+            }}
+            onOpenInviteModal={() => setShowInviteModal(true)}
+            onOpenAuthModal={() => setShowAuthModal(true)}
+            onSignOut={handleSignOut}
+            userProfile={userProfile}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            settlementsCount={settlements.length}
+            membersCount={currentTrip?.members?.length || 0}
+          />
+
+          <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 space-y-5 sm:space-y-6">
+            {/* GUEST VIEW: If user is logged out and has no trips */}
+            {!userProfile && activeTab === 'dashboard' && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-br from-teal-500/15 via-emerald-500/10 to-transparent border border-teal-500/30 rounded-3xl p-6 sm:p-10 text-center space-y-4 backdrop-blur-xl shadow-xl"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-teal-500 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/25">
+                  <Sparkles className="w-7 h-7 stroke-[2.5]" />
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+                  Welcome to Tripwise
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto font-medium">
+                  Smart group expense splitting with direct UPI settlements, AI travel budget estimation, and budget limit alerts. Sign in to create your first trip.
+                </p>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 font-black px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20"
+                  >
+                    Sign In with Google / Email
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('estimator')}
+                    className="w-full sm:w-auto bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-extrabold px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition hover:border-teal-500"
+                  >
+                    Try AI Budget Estimator →
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* LOGGED IN WITH 0 TRIPS: Clean Empty State Prompting Trip Creation */}
+            {userProfile && allTrips.length === 0 && activeTab === 'dashboard' && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center space-y-4 shadow-sm"
+              >
+                <div className="w-16 h-16 rounded-3xl bg-teal-500/15 text-teal-500 flex items-center justify-center mx-auto border border-teal-500/30">
+                  <PlaneTakeoff className="w-8 h-8 stroke-[2.5]" />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+                  No Trips Created Yet
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  Ready for your next adventure? Create your first trip to start adding members, tracking expenses, and splitting bills.
+                </p>
+                <button
+                  onClick={() => setShowNewTripModal(true)}
+                  className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-black px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20 inline-flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Create Your First Trip</span>
+                </button>
+              </motion.div>
+            )}
+
+            {/* ACTIVE TRIP COVER BANNER (When trip exists) */}
+            {userProfile && currentTrip && activeTab === 'dashboard' && tripCover && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full h-48 sm:h-72 md:h-80 rounded-3xl sm:rounded-[2.5rem] overflow-hidden relative shadow-xl shadow-teal-500/5 group border border-slate-200/50 dark:border-slate-800/50"
+              >
+                <img
+                  src={tripCover}
+                  alt={currentTrip.name}
+                  className="w-full h-full object-cover object-center transition duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent flex flex-col justify-end p-4 sm:p-8">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-teal-500/25 backdrop-blur-md text-teal-300 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider border border-teal-500/40">
+                      Active Trip
+                    </span>
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-300">
+                      Organized by {currentTrip.creatorName || currentTrip.creator_name || 'Organizer'}
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-4xl md:text-5xl font-black text-white tracking-tight truncate">
+                    {currentTrip.name}
+                  </h2>
+                </div>
+              </motion.div>
+            )}
+
+            {/* TAB CONTENT PANELS */}
+            <AnimatePresence mode="wait">
+              {/* 1. DASHBOARD TAB (With Active Trip) */}
+              {activeTab === 'dashboard' && userProfile && currentTrip && (
+                <motion.div
+                  key="dashboard"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 pb-16 sm:pb-6"
+                >
+                  {/* Left Column: Totals, Add Expense, Budget Monitor */}
+                  <div className="lg:col-span-5 space-y-4 sm:space-y-6">
+                    {/* Metric Cards with Anime.js animated counters */}
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
+                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                          Total Spent
+                        </p>
+                        <h3
+                          ref={totalSpentRef}
+                          className="text-lg sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate"
+                        >
+                          ₹{totalSpent.toLocaleString('en-IN')}
+                        </h3>
+                      </div>
+
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
+                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                          Per Person
+                        </p>
+                        <h3
+                          ref={perPersonRef}
+                          className="text-lg sm:text-3xl font-black text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate"
+                        >
+                          ₹{Math.round(perPersonShare).toLocaleString('en-IN')}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* Add Expense Form */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
+                      <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
+                        <Plus className="w-5 h-5 text-teal-500 stroke-[3]" />
+                        <span>Add Expense</span>
+                      </h2>
+
+                      <form onSubmit={handleAddExpense} className="space-y-3.5 sm:space-y-4">
+                        <div>
+                          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                            Expense Title
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Dinner, Fuel, Villa"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
+                          />
+
+                          {appError && (
+                            <span className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1 block">
+                              ⚠️ {appError}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                              Amount (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={amount}
+                              onChange={(e) => setAmount(e.target.value)}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                              Paid By
+                            </label>
+                            <GlassMemberDropdown
+                              members={currentTrip.members || []}
+                              selectedMember={paidBy}
+                              onSelectMember={setPaidBy}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                            Category
+                          </label>
+                          <GlassCategoryDropdown
+                            selectedCategory={category}
+                            onSelectCategory={setCategory}
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
+                        >
+                          <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                          <span>Add Expense</span>
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Creative Smart Budget Tracker Component */}
+                    <BudgetTracker
+                      trip={currentTrip}
+                      expenses={currentExpenses}
+                      onUpdateBudgetLimits={handleUpdateBudgetLimits}
+                    />
+                  </div>
+
+                  {/* Right Column: Expense Feed */}
+                  <div className="lg:col-span-7">
+                    <ExpenseFeed
+                      expenses={currentExpenses}
+                      onSettleExpense={handleSettleExpenseCard}
+                      getAvatarForMember={getAvatarForMember}
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 2. SETTLEMENTS TAB */}
+              {activeTab === 'settlements' && (
+                <motion.div
+                  key="settlements"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {currentTrip ? (
+                    <SettlementsTab
+                      trip={currentTrip}
+                      settlements={settlements}
+                      settledIds={settledIds}
+                      settlementDetailsMap={settlementDetailsMap}
+                      onCashSettle={handleCashSettle}
+                      onFinalizeUpiSettle={handleFinalizeUpiSettle}
+                      getAvatarForMember={getAvatarForMember}
+                      expenses={currentExpenses}
+                      netBalances={netBalances}
+                      totalSpent={totalSpent}
+                      perPersonShare={perPersonShare}
+                      currentUserName={userProfile?.name || 'Naqeeb'}
+                    />
+                  ) : (
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-3 max-w-lg mx-auto">
+                      <Lock className="w-8 h-8 text-teal-500 mx-auto" />
+                      <h3 className="text-lg font-bold">No Active Trip</h3>
+                      <p className="text-xs text-slate-400">
+                        Please sign in and create or select a trip to view settlements.
+                      </p>
+                      <button
+                        onClick={() => {
+                          if (!userProfile) setShowAuthModal(true);
+                          else setShowNewTripModal(true);
+                        }}
+                        className="bg-teal-500 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs"
+                      >
+                        {!userProfile ? 'Sign In' : 'Create Trip'}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* 3. MEMBERS TAB */}
+              {activeTab === 'members' && (
+                <motion.div
+                  key="members"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="pb-16 sm:pb-6"
+                >
+                  {currentTrip ? (
+                    <MembersTab
+                      trip={currentTrip}
+                      onAddMember={handleAddMember}
+                      currentUserId={userProfile?.id}
+                    />
+                  ) : (
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-3 max-w-lg mx-auto">
+                      <Users className="w-8 h-8 text-teal-500 mx-auto" />
+                      <h3 className="text-lg font-bold">No Members</h3>
+                      <p className="text-xs text-slate-400">
+                        Create or select a trip to manage members.
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* 4. AI BUDGET ESTIMATOR TAB */}
+              {activeTab === 'estimator' && (
+                <motion.div
+                  key="estimator"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <BudgetEstimator />
+                </motion.div>
+              )}
+
+              {/* 5. TRAVEL COMMUNITY BOARD TAB */}
+              {activeTab === 'community' && (
+                <motion.div
+                  key="community"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="pb-16 sm:pb-6"
+                >
+                  <CommunityAnnouncements
+                    userProfile={userProfile}
+                    onOpenAuthModal={() => setShowAuthModal(true)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </main>
+        </div>
+
+        {/* Global Footer */}
+        <Footer />
+
+        {/* MODALS */}
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onMockLogin={(mockUser) => {
+            setUserProfile(mockUser);
+            loadUserData(mockUser.id);
+          }}
+        />
+
+        {/* New Trip Modal with Mandatory Login Check */}
+        <NewTripModal
+          isOpen={showNewTripModal}
+          onClose={() => setShowNewTripModal(false)}
+          onCreateTrip={handleCreateTrip}
+          userProfile={userProfile}
+          onOpenAuthModal={() => setShowAuthModal(true)}
+        />
+
+        {/* Invite Friends Modal */}
+        <AnimatePresence>
+          {showInviteModal && currentTrip && (
+            <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 w-full max-w-sm shadow-2xl text-center relative"
+              >
+                <div className="p-3 bg-teal-500/10 text-teal-500 rounded-2xl w-max mx-auto mb-4 border border-teal-500/20">
+                  <Share2 className="w-6 h-6" />
+                </div>
+
+                <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-1">
+                  Invite Friends to Trip
+                </h3>
+                <p className="text-xs text-slate-400 mb-5">
+                  Anyone with this link can join <strong>{currentTrip.name}</strong>, enter their UPI ID, and split expenses.
+                </p>
+
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex items-center justify-between mb-5">
+                  <span className="text-xs font-mono text-teal-600 dark:text-teal-400 truncate mr-2">
+                    {typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/trip/join/{currentTrip.invite_token || currentTrip.inviteToken || 'tripwise_invite'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const link = `${window.location.origin}/trip/join/${currentTrip.invite_token || currentTrip.inviteToken || 'tripwise_invite'}`;
+                      navigator.clipboard.writeText(link);
+                      confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
+                      alert('Trip join link copied to clipboard!');
+                    }}
+                    className="bg-teal-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 hover:bg-teal-400 transition"
+                  >
+                    Copy
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold py-3 rounded-2xl text-xs transition"
+                >
+                  Close
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}

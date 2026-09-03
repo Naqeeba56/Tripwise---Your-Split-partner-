@@ -66,10 +66,10 @@ export default function UpiPaymentModal({
 
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2.5 bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 rounded-2xl shadow-md">
-              <CreditCard className="w-5 h-5 stroke-[2.5]" />
+              <CreditCard className="w-5 h-5 stroke-[2]" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Direct UPI Settlement
               </h3>
               <p className="text-xs text-slate-400">
@@ -83,7 +83,7 @@ export default function UpiPaymentModal({
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Amount to Pay
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400 my-1">
+            <div className="text-2xl sm:text-3xl font-bold text-teal-600 dark:text-teal-400 my-1">
               ₹{Number(amount).toLocaleString('en-IN')}
             </div>
             <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -117,7 +117,7 @@ export default function UpiPaymentModal({
             <a
               href={gpayIntent}
               onClick={() => onFinalizeUpiSettle(settlement)}
-              className="w-full flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-teal-500 rounded-2xl text-xs font-extrabold text-slate-800 dark:text-slate-200 transition"
+              className="w-full flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-teal-500 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 transition"
             >
               <div className="flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-teal-500" />
@@ -129,7 +129,7 @@ export default function UpiPaymentModal({
             <a
               href={phonePeIntent}
               onClick={() => onFinalizeUpiSettle(settlement)}
-              className="w-full flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-purple-500 rounded-2xl text-xs font-extrabold text-slate-800 dark:text-slate-200 transition"
+              className="w-full flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-purple-500 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 transition"
             >
               <div className="flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-purple-500" />
@@ -141,7 +141,7 @@ export default function UpiPaymentModal({
             <a
               href={upiUri}
               onClick={() => onFinalizeUpiSettle(settlement)}
-              className="w-full flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 rounded-2xl text-xs font-extrabold text-slate-800 dark:text-slate-200 transition"
+              className="w-full flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 transition"
             >
               <div className="flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-emerald-500" />
@@ -154,7 +154,7 @@ export default function UpiPaymentModal({
           <button
             type="button"
             onClick={() => onFinalizeUpiSettle(settlement)}
-            className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20"
+            className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20"
           >
             Mark Settled Manually After Payment
           </button>

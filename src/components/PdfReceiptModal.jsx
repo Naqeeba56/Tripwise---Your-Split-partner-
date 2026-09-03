@@ -75,10 +75,10 @@ export default function PdfReceiptModal({
 
           <div className="flex items-center gap-3">
             <div className="p-3 bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 rounded-2xl shadow-md">
-              <FileText className="w-6 h-6 stroke-[2.5]" />
+              <FileText className="w-6 h-6 stroke-[2]" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 Official Settlement Statement
               </h3>
               <p className="text-xs text-slate-400">
@@ -103,7 +103,7 @@ export default function PdfReceiptModal({
             </div>
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-500 dark:text-slate-400 font-bold">Settlement Status</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
                 {settledIds.length} / {settlements.length} Settled
               </span>
             </div>
@@ -114,19 +114,19 @@ export default function PdfReceiptModal({
             <button
               onClick={handleDownloadPdf}
               disabled={downloading}
-              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2"
+              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2"
             >
-              <Download className="w-4 h-4 stroke-[3]" />
+              <Download className="w-4 h-4 stroke-[2]" />
               <span>{downloading ? 'Compiling PDF...' : 'Download Official PDF Receipt'}</span>
             </button>
 
             <button
               onClick={handleCopyShareLink}
-              className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2"
+              className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2"
             >
               {copiedLink ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
+                  <Check className="w-4 h-4 text-emerald-500 stroke-[2]" />
                   <span className="text-emerald-500">Summary Copied to Clipboard!</span>
                 </>
               ) : (

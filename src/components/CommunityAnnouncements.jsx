@@ -121,10 +121,10 @@ export default function CommunityAnnouncements({
       <div className="bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent p-5 sm:p-7 rounded-3xl border border-emerald-500/20 backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-emerald-500 text-slate-950 rounded-2xl shadow-lg shadow-emerald-500/20 flex-shrink-0">
-            <Megaphone className="w-6 h-6 stroke-[2.5]" />
+            <Megaphone className="w-6 h-6 stroke-[2]" />
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
               Travel Community Board
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
@@ -141,9 +141,9 @@ export default function CommunityAnnouncements({
               setShowCreateModal(true);
             }
           }}
-          className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold px-4 py-3 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 flex-shrink-0"
+          className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold px-4 py-3 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 flex-shrink-0"
         >
-          <Plus className="w-4 h-4 stroke-[3]" />
+          <Plus className="w-4 h-4 stroke-[2]" />
           <span>Post Trip Announcement</span>
         </button>
       </div>
@@ -154,7 +154,7 @@ export default function CommunityAnnouncements({
           <button
             key={tag}
             onClick={() => setSelectedTag(tag)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition whitespace-nowrap ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
               selectedTag === tag
                 ? 'bg-teal-500 text-slate-950 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
@@ -190,21 +190,21 @@ export default function CommunityAnnouncements({
                     </div>
                   )}
                   <div>
-                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 block">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
                       {item.creator_name}
                     </span>
                     <span className="text-[10px] text-slate-400">{item.created_at}</span>
                   </div>
                 </div>
 
-                <span className="text-[11px] font-black text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-xl">
+                <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-xl">
                   ₹{item.budget_per_person.toLocaleString('en-IN')}/head
                 </span>
               </div>
 
               {/* Title & Destination */}
               <div>
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100">
+                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   {item.title}
                 </h3>
                 <div className="flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 font-semibold mt-1">
@@ -245,7 +245,7 @@ export default function CommunityAnnouncements({
                   navigator.clipboard.writeText(item.contact_info);
                   alert(`Contact info copied: ${item.contact_info}`);
                 }}
-                className="text-xs font-extrabold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 <span>Connect</span>
@@ -276,7 +276,7 @@ export default function CommunityAnnouncements({
                 <div className="p-2.5 bg-teal-500/10 text-teal-500 rounded-2xl">
                   <Megaphone className="w-5 h-5" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                   New Trip Announcement
                 </h3>
               </div>
@@ -385,13 +385,13 @@ export default function CommunityAnnouncements({
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold py-3 rounded-2xl text-xs"
+                    className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-2xl text-xs"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/20"
+                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/20"
                   >
                     Publish Announcement
                   </button>

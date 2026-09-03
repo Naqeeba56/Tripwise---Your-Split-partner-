@@ -42,10 +42,10 @@ export default function NewTripModal({
             </button>
 
             <div className="w-14 h-14 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/30 shadow-md">
-              <Lock className="w-7 h-7 stroke-[2.5]" />
+              <Lock className="w-7 h-7 stroke-[2]" />
             </div>
 
-            <h3 className="text-xl font-black text-slate-900 dark:text-slate-100">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
               Sign In Required
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
@@ -58,13 +58,13 @@ export default function NewTripModal({
                   onClose();
                   if (onOpenAuthModal) onOpenAuthModal();
                 }}
-                className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20"
+                className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20"
               >
                 Sign In with Google / Email
               </button>
               <button
                 onClick={onClose}
-                className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold py-3 rounded-2xl text-xs transition"
+                className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-2xl text-xs transition"
               >
                 Cancel
               </button>
@@ -129,7 +129,7 @@ export default function NewTripModal({
               <div className="p-2.5 bg-teal-500/10 text-teal-500 rounded-2xl border border-teal-500/20">
                 <PlaneTakeoff className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 Create New Trip
               </h3>
             </div>
@@ -255,14 +255,14 @@ export default function NewTripModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold py-3 rounded-2xl text-xs transition"
+                className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-2xl text-xs transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isCompressing}
-                className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/20"
+                className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/20"
               >
                 {isCompressing ? 'Processing Image...' : 'Save & Start Trip'}
               </button>

@@ -94,9 +94,9 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
 
           <div className="text-center mb-6">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-950 mx-auto mb-3 shadow-lg shadow-teal-500/20">
-              <Sparkles className="w-6 h-6 stroke-[2.5]" />
+              <Sparkles className="w-6 h-6 stroke-[2]" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
               Welcome to Tripwise
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -120,7 +120,7 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
             <button
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-2xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-extrabold text-sm transition shadow-sm"
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-2xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-semibold text-sm transition shadow-sm"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -145,7 +145,7 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
 
             <div className="relative flex items-center justify-center my-4">
               <div className="border-t border-slate-200 dark:border-slate-800 w-full" />
-              <span className="bg-white dark:bg-slate-900 px-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 absolute">
+              <span className="bg-white dark:bg-slate-900 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 absolute">
                 Or with Email
               </span>
             </div>
@@ -168,10 +168,10 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-semibold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2"
               >
                 <span>{loading ? 'Sending link...' : 'Send Magic Link'}</span>
-                <ArrowRight className="w-4 h-4 stroke-[3]" />
+                <ArrowRight className="w-4 h-4 stroke-[2]" />
               </button>
             </form>
           </div>

@@ -79,10 +79,10 @@ export default function ExpenseCard({
           <div
             className={`p-2.5 sm:p-3 rounded-2xl flex-shrink-0 ${catObj.bgLight} ${catObj.bgDark}`}
           >
-            <CatIcon className="w-5 h-5 stroke-[2.5]" />
+            <CatIcon className="w-5 h-5 stroke-[2]" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
+            <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
               {expense.title}
             </h3>
             <div className="flex items-center gap-1.5 mt-0.5 truncate">
@@ -96,18 +96,18 @@ export default function ExpenseCard({
                   className="w-4 h-4 rounded-full object-cover flex-shrink-0"
                 />
               ) : (
-                <div className="w-4 h-4 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-[9px] flex items-center justify-center flex-shrink-0">
+                <div className="w-4 h-4 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-medium text-[9px] flex items-center justify-center flex-shrink-0">
                   {paidBy[0]}
                 </div>
               )}
-              <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+              <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
                 {paidBy}
               </span>
             </div>
           </div>
         </div>
 
-        <span className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex-shrink-0">
+        <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex-shrink-0">
           ₹
           {balance.toLocaleString('en-IN', {
             minimumFractionDigits: 0,
@@ -117,7 +117,7 @@ export default function ExpenseCard({
       </div>
 
       {showSuccessBadge && (
-        <div className="success-badge mt-3 text-[11px] sm:text-xs font-extrabold px-3.5 py-1.5 rounded-full bg-emerald-500 text-slate-950 inline-flex items-center gap-1 shadow-md">
+        <div className="success-badge mt-3 text-[11px] sm:text-xs font-semibold px-3.5 py-1.5 rounded-full bg-emerald-500 text-slate-950 inline-flex items-center gap-1 shadow-md">
           ✓ Settled Successfully
         </div>
       )}
@@ -126,7 +126,7 @@ export default function ExpenseCard({
         <div className="mt-3.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex justify-end">
           <button
             type="button"
-            className="settle-btn text-[11px] sm:text-xs font-extrabold px-4 py-2 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-sm transition-all active:scale-95"
+            className="settle-btn text-[11px] sm:text-xs font-semibold px-4 py-2 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-sm transition-all active:scale-95"
             onClick={() => handleSettlement(balance)}
           >
             Settle Full Amount

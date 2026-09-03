@@ -3,6 +3,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  fetchPlaceAutocomplete,
+  fetchPlaceDetails,
+  fetchTextSearch,
+  fetchNearbyPlaces,
+  getPlacePhotoUrl
+} from '@/lib/googlePlacesService';
+import {
   Plus,
   PlaneTakeoff,
   Share2,
@@ -406,9 +413,9 @@ export default function Home() {
                 className="bg-gradient-to-br from-teal-500/15 via-emerald-500/10 to-transparent border border-teal-500/30 rounded-3xl p-6 sm:p-10 text-center space-y-4 backdrop-blur-xl shadow-xl"
               >
                 <div className="w-14 h-14 rounded-2xl bg-teal-500 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/25">
-                  <Sparkles className="w-7 h-7 stroke-[2.5]" />
+                  <Sparkles className="w-7 h-7 stroke-[2]" />
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
                   Welcome to Tripwise
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto font-medium">
@@ -417,13 +424,13 @@ export default function Home() {
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={() => setShowAuthModal(true)}
-                    className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 font-black px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20"
+                    className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20"
                   >
                     Sign In with Google / Email
                   </button>
                   <button
                     onClick={() => setActiveTab('estimator')}
-                    className="w-full sm:w-auto bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-extrabold px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition hover:border-teal-500"
+                    className="w-full sm:w-auto bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition hover:border-teal-500"
                   >
                     Try AI Budget Estimator →
                   </button>
@@ -439,9 +446,9 @@ export default function Home() {
                 className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center space-y-4 shadow-sm"
               >
                 <div className="w-16 h-16 rounded-3xl bg-teal-500/15 text-teal-500 flex items-center justify-center mx-auto border border-teal-500/30">
-                  <PlaneTakeoff className="w-8 h-8 stroke-[2.5]" />
+                  <PlaneTakeoff className="w-8 h-8 stroke-[2]" />
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
                   No Trips Created Yet
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
@@ -449,9 +456,9 @@ export default function Home() {
                 </p>
                 <button
                   onClick={() => setShowNewTripModal(true)}
-                  className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-black px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20 inline-flex items-center gap-2"
+                  className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20 inline-flex items-center gap-2"
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <Plus className="w-4 h-4 stroke-[2]" />
                   <span>Create Your First Trip</span>
                 </button>
               </motion.div>
@@ -471,14 +478,14 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent flex flex-col justify-end p-4 sm:p-8">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="bg-teal-500/25 backdrop-blur-md text-teal-300 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider border border-teal-500/40">
+                    <span className="bg-teal-500/25 backdrop-blur-md text-teal-300 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border border-teal-500/40">
                       Active Trip
                     </span>
                     <span className="text-[11px] sm:text-xs font-bold text-slate-300">
                       Organized by {currentTrip.creatorName || currentTrip.creator_name || 'Organizer'}
                     </span>
                   </div>
-                  <h2 className="text-xl sm:text-4xl md:text-5xl font-black text-white tracking-tight truncate">
+                  <h2 className="text-xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight truncate">
                     {currentTrip.name}
                   </h2>
                 </div>
@@ -507,7 +514,7 @@ export default function Home() {
                         </p>
                         <h3
                           ref={totalSpentRef}
-                          className="text-lg sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate"
+                          className="text-lg sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate"
                         >
                           ₹{totalSpent.toLocaleString('en-IN')}
                         </h3>
@@ -519,7 +526,7 @@ export default function Home() {
                         </p>
                         <h3
                           ref={perPersonRef}
-                          className="text-lg sm:text-3xl font-black text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate"
+                          className="text-lg sm:text-3xl font-bold text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate"
                         >
                           ₹{Math.round(perPersonShare).toLocaleString('en-IN')}
                         </h3>
@@ -528,8 +535,8 @@ export default function Home() {
 
                     {/* Add Expense Form */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
-                      <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
-                        <Plus className="w-5 h-5 text-teal-500 stroke-[3]" />
+                      <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
+                        <Plus className="w-5 h-5 text-teal-500 stroke-[2]" />
                         <span>Add Expense</span>
                       </h2>
 
@@ -591,9 +598,9 @@ export default function Home() {
 
                         <button
                           type="submit"
-                          className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
+                          className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
                         >
-                          <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                          <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2]" />
                           <span>Add Expense</span>
                         </button>
                       </form>
@@ -761,7 +768,7 @@ export default function Home() {
                   <Share2 className="w-6 h-6" />
                 </div>
 
-                <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-1">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">
                   Invite Friends to Trip
                 </h3>
                 <p className="text-xs text-slate-400 mb-5">
@@ -779,7 +786,7 @@ export default function Home() {
                       confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
                       alert('Trip join link copied to clipboard!');
                     }}
-                    className="bg-teal-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 hover:bg-teal-400 transition"
+                    className="bg-teal-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 hover:bg-teal-400 transition"
                   >
                     Copy
                   </button>
@@ -788,7 +795,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
-                  className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold py-3 rounded-2xl text-xs transition"
+                  className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-2xl text-xs transition"
                 >
                   Close
                 </button>

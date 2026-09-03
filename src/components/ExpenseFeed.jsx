@@ -27,7 +27,7 @@ export default function ExpenseFeed({
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-5">
-        <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
           <Receipt className="w-5 h-5 text-teal-500" />
           <span>Expense Feed</span>
           <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full font-bold">
@@ -52,7 +52,7 @@ export default function ExpenseFeed({
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-3 mb-3 border-b border-slate-100 dark:border-slate-800/50">
         <button
           onClick={() => setSelectedCategory('ALL')}
-          className={`px-3 py-1 rounded-xl text-xs font-extrabold transition whitespace-nowrap ${
+          className={`px-3 py-1 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
             selectedCategory === 'ALL'
               ? 'bg-teal-500 text-slate-950 shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -67,7 +67,7 @@ export default function ExpenseFeed({
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1 rounded-xl text-xs font-extrabold transition whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-xl text-xs font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
                 isSelected
                   ? 'bg-teal-500 text-slate-950 shadow-sm'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'

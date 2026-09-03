@@ -251,21 +251,29 @@ export const calculateEstimatedBudget = ({
   const roomsNeeded = Math.ceil(numTravelers / 2);
 
   // 1. Accommodation Rates
+  // 'nostay' = day trip / no overnight — zero accommodation cost
   const stayRates = {
-    '5star': 12000,
-    '4star': 6500,
-    '3star': 3200,
+    'nostay':  0,
+    '5star':   12000,
+    '4star':   6500,
+    '3star':   3200,
     'homestay': 2200,
-    'villa': numTravelers > 4 ? 14000 / roomsNeeded : 8000,
-    'airbnb': 3500,
-    'hostel': 900,
+    'villa':   numTravelers > 4 ? 14000 / roomsNeeded : 8000,
+    'airbnb':  3500,
+    'hostel':  900,
   };
 
-  const stayRatePerNight = stayRates[stayType] || 3000;
+  const stayRatePerNight = stayRates[stayType] ?? 3000;
   const stayMultiplier = travelStyle === 'luxury' ? 1.3 : travelStyle === 'budget' ? 0.75 : 1.0;
-  const totalStayCost = stayType === 'hostel'
-    ? numTravelers * stayRatePerNight * nights * stayMultiplier
-    : roomsNeeded * stayRatePerNight * nights * stayMultiplier;
+
+  let totalStayCost = 0;
+  if (stayType === 'nostay') {
+    totalStayCost = 0; // day trip — no hotel cost at all
+  } else if (stayType === 'hostel') {
+    totalStayCost = numTravelers * stayRatePerNight * nights * stayMultiplier;
+  } else {
+    totalStayCost = roomsNeeded * stayRatePerNight * nights * stayMultiplier;
+  }
 
   // 2. Transport Rates
   let totalTransportCost = 0;

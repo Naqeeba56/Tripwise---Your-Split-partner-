@@ -66,7 +66,7 @@ export default function GlassMemberDropdown({ members = [], selectedMember, onSe
                       onSelectMember(memberName);
                       setIsOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                       isSelected
                         ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20'
                         : 'hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-transparent'
@@ -87,7 +87,7 @@ export default function GlassMemberDropdown({ members = [], selectedMember, onSe
                       <span className="truncate">{memberName}</span>
                     </div>
                     {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-teal-500 stroke-[3] flex-shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-teal-500 stroke-[2] flex-shrink-0" />
                     )}
                   </button>
                 );

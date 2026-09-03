@@ -65,7 +65,7 @@ export default function MembersTab({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-7 shadow-sm">
-        <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
+        <h2 className="text-base sm:text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4 sm:mb-5 flex items-center gap-2.5">
           <Users className="w-5 h-5 sm:w-6 sm:h-6 text-teal-500" />
           <span>Trip Members ({trip.members?.length || 0})</span>
         </h2>
@@ -91,12 +91,12 @@ export default function MembersTab({
                       className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover border border-teal-500/30 flex-shrink-0"
                     />
                   ) : (
-                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 font-extrabold text-xs sm:text-sm flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 font-semibold text-xs sm:text-sm flex items-center justify-center flex-shrink-0">
                       {name[0]}
                     </div>
                   )}
                   <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 truncate block">
+                    <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate block">
                       {name}
                     </span>
                     {upiId && (
@@ -178,9 +178,9 @@ export default function MembersTab({
             <button
               type="submit"
               disabled={isCompressing}
-              className="bg-teal-500 hover:bg-teal-400 text-slate-950 px-5 py-3 rounded-2xl text-xs font-extrabold transition shadow-sm self-stretch sm:self-center flex items-center justify-center gap-1.5"
+              className="bg-teal-500 hover:bg-teal-400 text-slate-950 px-5 py-3 rounded-2xl text-xs font-semibold transition shadow-sm self-stretch sm:self-center flex items-center justify-center gap-1.5"
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
+              <Plus className="w-4 h-4 stroke-[2]" />
               <span>Add</span>
             </button>
           </div>

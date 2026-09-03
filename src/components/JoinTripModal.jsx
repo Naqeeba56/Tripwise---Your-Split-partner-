@@ -75,9 +75,9 @@ export default function JoinTripModal({
 
           <div className="text-center mb-6">
             <div className="w-12 h-12 rounded-2xl bg-teal-500/15 text-teal-500 flex items-center justify-center mx-auto mb-3 border border-teal-500/30">
-              <Users className="w-6 h-6 stroke-[2.5]" />
+              <Users className="w-6 h-6 stroke-[2]" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
               Join {tripName || 'Shared Trip'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -158,10 +158,10 @@ export default function JoinTripModal({
             <button
               type="submit"
               disabled={isCompressing}
-              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
+              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
             >
               <span>{isCompressing ? 'Compressing Photo...' : 'Join Trip & Open Dashboard'}</span>
-              <ArrowRight className="w-4 h-4 stroke-[3]" />
+              <ArrowRight className="w-4 h-4 stroke-[2]" />
             </button>
           </form>
         </motion.div>

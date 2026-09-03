@@ -85,10 +85,10 @@ export default function BudgetTracker({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 rounded-xl shadow-sm">
-            <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+            <TrendingUp className="w-4 h-4 stroke-[2]" />
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
               Budget & Spending Tracker
             </h3>
             <p className="text-[10px] text-slate-400">
@@ -99,7 +99,7 @@ export default function BudgetTracker({
 
         <button
           onClick={() => setIsEditing(!isEditing)}
-          className="flex items-center gap-1 text-[11px] font-extrabold text-slate-600 dark:text-slate-300 hover:text-teal-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-xl transition"
+          className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:text-teal-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-xl transition"
         >
           <Sliders className="w-3.5 h-3.5 text-teal-500" />
           <span>{isEditing ? 'Done' : 'Set Limits'}</span>
@@ -144,7 +144,7 @@ export default function BudgetTracker({
 
             <button
               type="submit"
-              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold py-2 rounded-xl text-xs transition shadow-sm"
+              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-2 rounded-xl text-xs transition shadow-sm"
             >
               Update Budget Caps
             </button>
@@ -199,7 +199,7 @@ export default function BudgetTracker({
           </svg>
 
           <div className="absolute flex flex-col items-center justify-center text-center">
-            <span className="text-base font-black text-slate-900 dark:text-slate-100 leading-tight">
+            <span className="text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
               {percentUsed}%
             </span>
             <span className="text-[9px] font-bold text-slate-400">Used</span>
@@ -216,7 +216,7 @@ export default function BudgetTracker({
             ) : (
               <CheckCircle className="w-4 h-4 text-teal-500" />
             )}
-            <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
               {isBreached
                 ? 'Daily Budget Breached!'
                 : isWarning

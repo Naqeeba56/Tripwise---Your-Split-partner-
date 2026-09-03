@@ -10,10 +10,10 @@ export default function Footer() {
         <div className="flex flex-col items-center justify-center text-center space-y-4">
           <div className="flex flex-col items-center space-y-2 w-full">
             <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-2.5 rounded-2xl shadow-md shadow-teal-500/20 text-slate-950">
-              <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+              <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2]" />
             </div>
             <div className="w-full overflow-hidden">
-              <h3 className="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent">
+              <h3 className="text-lg sm:text-xl font-bold tracking-tight bg-gradient-to-r from-teal-500 to-emerald-500 dark:from-teal-400 dark:to-emerald-300 bg-clip-text text-transparent">
                 Tripwise
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">

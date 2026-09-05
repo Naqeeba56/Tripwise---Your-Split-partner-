@@ -817,6 +817,15 @@ export const getHiddenGemsWithImages = (destinationName) => {
 const DISTANCE_TABLE = {
   // Mumbai hub
   'lonavala-mumbai': 83,
+  'mumbai-nagpur': 775,
+  'pune-nagpur': 710,
+  'nagpur-hyderabad': 500,
+  'nagpur-bhopal': 350,
+  'nagpur-amravati': 155,
+  'nagpur-wardha': 75,
+  'nagpur-jabalpur': 275,
+  'delhi-nagpur': 1080,
+  'bangalore-nagpur': 1090,
   'mumbai-pune': 155,
   'goa-mumbai': 598,
   'mumbai-nashik': 172,

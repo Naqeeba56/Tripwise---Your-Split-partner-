@@ -1,28 +1,58 @@
 /**
  * Calculates net balances for all members in a trip.
+ * Supports member exclusions per expense and sub-member dependent consolidation.
  * 
- * @param {Array} members - Array of member objects [{ name, avatar, upi_id }]
- * @param {Array} expenses - Array of expense items [{ amount, paidBy, ... }]
+ * @param {Array} members - Array of member objects [{ name, avatar, upi_id, parentMemberName }]
+ * @param {Array} expenses - Array of expense items [{ amount, paidBy, excludedMembers }]
  * @returns {Object} { totalSpent, perPersonShare, netBalances }
  */
 export const calculateNetBalances = (members = [], expenses = []) => {
-  const memberList = members.map((m) => (typeof m === 'string' ? m : m.name));
-  const memberCount = memberList.length;
+  const memberObjs = members.map((m) => (typeof m === 'string' ? { name: m } : m));
+  const memberNames = memberObjs.map((m) => m.name);
+  const memberCount = memberNames.length;
 
   const totalSpent = expenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const perPersonShare = memberCount > 0 ? totalSpent / memberCount : 0;
 
   const netBalances = {};
-  memberList.forEach((name) => {
-    netBalances[name] = -perPersonShare;
+  memberNames.forEach((name) => {
+    netBalances[name] = 0;
   });
 
+  // Calculate balances per expense taking into account excluded members
   expenses.forEach((exp) => {
+    const amt = Number(exp.amount || 0);
     const payer = exp.paidBy || exp.payer || 'Unknown';
+    const excluded = Array.isArray(exp.excludedMembers) ? exp.excludedMembers : [];
+
+    const included = memberNames.filter((name) => !excluded.includes(name));
+    const activeCount = included.length > 0 ? included.length : memberCount;
+    const sharePerIncluded = activeCount > 0 ? amt / activeCount : 0;
+
+    // Debit share from each included member
+    included.forEach((name) => {
+      if (netBalances[name] !== undefined) {
+        netBalances[name] -= sharePerIncluded;
+      } else {
+        netBalances[name] = -sharePerIncluded;
+      }
+    });
+
+    // Credit full amount to payer
     if (netBalances[payer] !== undefined) {
-      netBalances[payer] += Number(exp.amount || 0);
+      netBalances[payer] += amt;
     } else {
-      netBalances[payer] = Number(exp.amount || 0) - perPersonShare;
+      netBalances[payer] = amt;
+    }
+  });
+
+  // Consolidate sub-member / dependent balances into their parent members
+  memberObjs.forEach((mObj) => {
+    const parentName = mObj.parentMemberName || mObj.parent_member_name;
+    if (parentName && parentName !== mObj.name && netBalances[parentName] !== undefined) {
+      const childBalance = netBalances[mObj.name] || 0;
+      netBalances[parentName] += childBalance;
+      netBalances[mObj.name] = 0; // Sub-member settled via parent
     }
   });
 
@@ -78,3 +108,4 @@ export const calculateOptimalSettlements = (netBalances = {}) => {
 
   return settlements;
 };
+

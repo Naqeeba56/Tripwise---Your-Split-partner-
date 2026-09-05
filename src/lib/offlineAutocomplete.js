@@ -68,11 +68,44 @@ export const searchCities = (query, maxResults = 7) => {
     return { city, score };
   });
 
-  return scored
+  const results = scored
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, maxResults)
     .map(({ city }) => buildSuggestion(city));
+
+  // If no DB match, build dynamic city suggestion so small towns always work
+  if (results.length === 0 && q.length >= 2) {
+    const capitalized = q.charAt(0).toUpperCase() + q.slice(1);
+    const dynamicCity = {
+      id: q.replace(/[^a-z0-9]/g, '_'),
+      name: capitalized,
+      state: 'India',
+      aliases: [q],
+      lat: 20.5937,
+      lng: 78.9629,
+      hasFlight: false,
+      hasTrain: true,
+      hasBus: true,
+      cover: `https://picsum.photos/seed/${q}/1400/600`,
+      thumb: `https://picsum.photos/seed/${q}/600/400`,
+      gems: [
+        {
+          name: `${capitalized} Local Heritage & Nature Trail`,
+          type: 'Scenic Spot',
+          difficulty: 'Easy',
+          distance: '5 km',
+          bestTime: 'October – March',
+          desc: `Explore the vibrant local markets, traditional cuisine, and surrounding landscapes of ${capitalized}.`,
+          image: `https://picsum.photos/seed/${q}-gem/800/600`,
+          directions: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(capitalized)}`,
+        },
+      ],
+    };
+    results.push(buildSuggestion(dynamicCity));
+  }
+
+  return results;
 };
 
 // ── shape builder ────────────────────────────────────────────────────────────

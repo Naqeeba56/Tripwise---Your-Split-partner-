@@ -49,6 +49,7 @@ import {
   createExpenseInDb,
   deleteExpenseInDb,
   addMemberInDb,
+  createSettlementInDb,
   getUserStorageKey,
 } from '@/lib/supabaseDb';
 import { calculateNetBalances, calculateOptimalSettlements } from '@/lib/settlementMath';
@@ -77,6 +78,7 @@ export default function Home() {
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const [category, setCategory] = useState('Food');
+  const [excludedMembers, setExcludedMembers] = useState([]);
   const [appError, setAppError] = useState(null);
 
   // Refs for animated numbers
@@ -269,6 +271,7 @@ export default function Home() {
         amount: numAmount,
         paidBy: paidBy || currentTrip.members?.[0]?.name || userProfile?.name || 'User',
         category: category || 'Food',
+        excludedMembers: excludedMembers,
       },
       userProfile?.id
     );
@@ -276,6 +279,7 @@ export default function Home() {
     setExpenses([newExp, ...expenses]);
     setTitle('');
     setAmount('');
+    setExcludedMembers([]);
     setAppError(null);
   };
 
@@ -333,7 +337,7 @@ export default function Home() {
     }
   };
 
-  const handleCashSettle = (settlement) => {
+  const handleCashSettle = async (settlement) => {
     const dynamicData = {
       settledAt: new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -343,6 +347,10 @@ export default function Home() {
       method: 'Cash Settlement',
       transactionId: `CASH-${Math.floor(100000 + Math.random() * 900000)}`,
     };
+
+    if (currentTrip) {
+      await createSettlementInDb(currentTrip.id, { ...settlement, method: 'Cash', transactionId: dynamicData.transactionId }, userProfile?.id);
+    }
 
     const updatedSettled = [...settledIds, settlement.id];
     const updatedMap = { ...settlementDetailsMap, [settlement.id]: dynamicData };
@@ -355,7 +363,7 @@ export default function Home() {
     }
   };
 
-  const handleFinalizeUpiSettle = (settlement) => {
+  const handleFinalizeUpiSettle = async (settlement) => {
     const dynamicData = {
       settledAt: new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -365,6 +373,10 @@ export default function Home() {
       method: 'Instant UPI Transfer',
       transactionId: `UPI-${Math.floor(100000 + Math.random() * 900000)}`,
     };
+
+    if (currentTrip) {
+      await createSettlementInDb(currentTrip.id, { ...settlement, method: 'UPI', transactionId: dynamicData.transactionId }, userProfile?.id);
+    }
 
     const updatedSettled = [...settledIds, settlement.id];
     const updatedMap = { ...settlementDetailsMap, [settlement.id]: dynamicData };
@@ -595,6 +607,41 @@ export default function Home() {
                             onSelectCategory={setCategory}
                           />
                         </div>
+
+                        {/* Exclude Members Option */}
+                        {currentTrip?.members?.length > 1 && (
+                          <div>
+                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                              Exclude Members from Split (Optional)
+                            </label>
+                            <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                              {currentTrip.members.map((m, idx) => {
+                                const mName = typeof m === 'string' ? m : m.name;
+                                const isExcluded = excludedMembers.includes(mName);
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => {
+                                      if (isExcluded) {
+                                        setExcludedMembers(excludedMembers.filter((name) => name !== mName));
+                                      } else {
+                                        setExcludedMembers([...excludedMembers, mName]);
+                                      }
+                                    }}
+                                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition border flex items-center gap-1 ${isExcluded
+                                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 line-through'
+                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                                      }`}
+                                  >
+                                    <span>{mName}</span>
+                                    {isExcluded && <span className="text-[10px]">✕</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
                         <button
                           type="submit"

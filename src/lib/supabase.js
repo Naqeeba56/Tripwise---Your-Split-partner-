@@ -29,7 +29,7 @@ export const signInWithGoogle = async () => {
     return { data: null, error: new Error('Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local') };
   }
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  const origin = (typeof window !== 'undefined' ? window.location.origin : null) || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -52,7 +52,7 @@ export const signInWithOtp = async (email) => {
     return { data: null, error: new Error('Supabase not configured.') };
   }
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  const origin = (typeof window !== 'undefined' ? window.location.origin : null) || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {

@@ -104,6 +104,11 @@ export default function ExpenseCard({
                 {paidBy}
               </span>
             </div>
+            {expense.excludedMembers && expense.excludedMembers.length > 0 && (
+              <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate">
+                <span>🚫 Excluded: {expense.excludedMembers.join(', ')}</span>
+              </div>
+            )}
           </div>
         </div>
 

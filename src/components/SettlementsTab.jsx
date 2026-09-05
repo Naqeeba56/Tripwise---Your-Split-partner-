@@ -61,7 +61,7 @@ export default function SettlementsTab({
     setActiveUpiSettlement(null);
   };
 
-  // Find creditor member object to retrieve specific UPI ID
+  // Find creditor member object to retrieve specific UPI ID, UPI number and custom QR
   const getCreditorMember = (creditorName) => {
     const found = trip.members?.find((m) => {
       const name = typeof m === 'string' ? m : m.name;
@@ -71,11 +71,15 @@ export default function SettlementsTab({
       return {
         name: found.name,
         upi_id: found.upi_id || found.upi || trip.creatorUpi || trip.creator_upi || 'naqeeb@upi',
+        upi_number: found.upi_number || found.upiNumber || '',
+        qr_code_url: found.qr_code_url || found.qr_code || found.qrCode || null,
       };
     }
     return {
       name: creditorName,
       upi_id: trip.creatorUpi || trip.creator_upi || 'naqeeb@upi',
+      upi_number: '',
+      qr_code_url: null,
     };
   };
 
@@ -184,9 +188,15 @@ export default function SettlementsTab({
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate block">
                       {memberName}
                     </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      Paid: ₹{paidTotal.toLocaleString('en-IN')}
-                    </span>
+                    {typeof m === 'object' && (m.parentMemberName || m.parent_member_name) ? (
+                      <span className="text-[9px] font-bold text-amber-500 block truncate">
+                        👶 Dependent of {m.parentMemberName || m.parent_member_name}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 block">
+                        Paid: ₹{paidTotal.toLocaleString('en-IN')}
+                      </span>
+                    )}
                   </div>
                 </div>
 

@@ -98,18 +98,47 @@ export const CITY_DB = [
     ],
   },
   {
-    id: 'kolhapur',
-    name: 'Kolhapur',
+    id: 'nagpur',
+    name: 'Nagpur',
     state: 'Maharashtra',
-    aliases: ['kolhapur'],
-    lat: 16.7050, lng: 74.2433,
-    cover: 'https://images.unsplash.com/photo-1555400038-63f5ba517a47?q=85&w=1400&auto=format&fit=crop',
-    thumb: 'https://images.unsplash.com/photo-1555400038-63f5ba517a47?q=80&w=600&auto=format&fit=crop',
-    hasFlight: false, hasTrain: true, hasBus: true,
+    aliases: ['nagpur', 'orange city', 'ngp'],
+    lat: 21.1458, lng: 79.0882,
+    cover: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?q=85&w=1400&auto=format&fit=crop',
+    thumb: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?q=80&w=600&auto=format&fit=crop',
+    hasFlight: true, hasTrain: true, hasBus: true,
     gems: [
-      { name: 'Rankala Lake', type: 'Scenic Lake', difficulty: 'Easy', distance: '2 km', bestTime: 'Oct – Feb', desc: 'Historic lake surrounded by ancient temples and vibrant local food stalls at sunset.', image: 'https://images.unsplash.com/photo-1439066615861-d1af74d74000?q=80&w=800&auto=format&fit=crop', directions: 'https://www.google.com/maps/search/?api=1&query=Rankala+Lake+Kolhapur' },
+      { name: 'Futala Lake', type: 'Scenic Lake', difficulty: 'Easy', distance: '5 km', bestTime: 'Oct – Mar', desc: 'Vibrant sunset lakefront with musical fountain shows and famous local food stalls.', image: 'https://images.unsplash.com/photo-1439066615861-d1af74d74000?q=80&w=800&auto=format&fit=crop', directions: 'https://www.google.com/maps/search/?api=1&query=Futala+Lake+Nagpur' },
+      { name: 'Deekshabhoomi', type: 'Monument', difficulty: 'Easy', distance: '3 km', bestTime: 'Year-round', desc: 'Monumental stupa where Dr. B.R. Ambedkar embraced Buddhism — peaceful architectural marvel.', image: 'https://images.unsplash.com/photo-1548013146-72479768bada?q=80&w=800&auto=format&fit=crop', directions: 'https://www.google.com/maps/search/?api=1&query=Deekshabhoomi+Nagpur' },
+      { name: 'Pench Tiger Reserve', type: 'Wildlife', difficulty: 'Moderate', distance: '75 km', bestTime: 'Nov – May', desc: 'The real Mowgli land — lush teak forests with high tiger sightings and jungle safaris.', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=800&auto=format&fit=crop', directions: 'https://www.google.com/maps/search/?api=1&query=Pench+Tiger+Reserve+Nagpur' },
     ],
   },
+  {
+    id: 'amravati',
+    name: 'Amravati',
+    state: 'Maharashtra',
+    aliases: ['amravati', 'amrawati'],
+    lat: 20.9374, lng: 77.7796,
+    cover: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=85&w=1400&auto=format&fit=crop',
+    thumb: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=600&auto=format&fit=crop',
+    hasFlight: false, hasTrain: true, hasBus: true,
+    gems: [
+      { name: 'Chikhaldara Hill Station', type: 'Hill Station', difficulty: 'Easy', distance: '80 km', bestTime: 'Jul – Feb', desc: 'Coffee-scented hill resort in Satpura range with deep valleys, waterfalls and wildlife.', image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop', directions: 'https://www.google.com/maps/search/?api=1&query=Chikhaldara+Amravati' },
+    ],
+  },
+  {
+    id: 'wardha',
+    name: 'Wardha',
+    state: 'Maharashtra',
+    aliases: ['wardha', 'sevagram'],
+    lat: 20.7453, lng: 78.6022,
+    cover: 'https://images.unsplash.com/photo-1548013146-72479768bada?q=85&w=1400&auto=format&fit=crop',
+    thumb: 'https://images.unsplash.com/photo-1548013146-72479768bada?q=80&w=600&auto=format&fit=crop',
+    hasFlight: false, hasTrain: true, hasBus: true,
+    gems: [
+      { name: 'Sevagram Ashram', type: 'Heritage', difficulty: 'Easy', distance: '8 km', bestTime: 'Oct – Mar', desc: 'Mahatma Gandhi\'s historic residence from 1936 to 1948 — serene khadi heritage campus.', image: 'https://images.unsplash.com/photo-1548013146-72479768bada?q=80&w=800&auto=format&fit=crop', directions: 'https://www.google.com/maps/search/?api=1&query=Sevagram+Ashram+Wardha' },
+    ],
+  },
+
 
   // ── Goa ──────────────────────────────────────────────────────────────────
   {

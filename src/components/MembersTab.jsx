@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Camera, Plus, Check, Shield, Smartphone, Baby, PhoneCall } from 'lucide-react';
+import { Users, Camera, Plus, Check, Shield, Smartphone, Baby, PhoneCall, Trash2 } from 'lucide-react';
 import { compressToWebP } from '@/lib/imageUtils';
 
 export default function MembersTab({
   trip,
   onAddMember,
+  onDeleteMember,
   currentUserId,
 }) {
   const [newMemberName, setNewMemberName] = useState('');
@@ -126,6 +127,7 @@ export default function MembersTab({
                     <img
                       src={avatar}
                       alt={name}
+                      loading="lazy"
                       className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover border border-teal-500/30 flex-shrink-0"
                     />
                   ) : (
@@ -163,17 +165,34 @@ export default function MembersTab({
                   </div>
                 </div>
 
-                <span
-                  className={`text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${
-                    isCreator
-                      ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30'
-                      : parentName
-                      ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
-                  }`}
-                >
-                  {isCreator ? 'Organizer' : parentName ? 'Sub-Member' : 'Member'}
-                </span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span
+                    className={`text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full ${
+                      isCreator
+                        ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30'
+                        : parentName
+                        ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {isCreator ? 'Organizer' : parentName ? 'Sub-Member' : 'Member'}
+                  </span>
+                  
+                  {!isCreator && onDeleteMember && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete ${name} from this trip?`)) {
+                          const memberId = typeof m === 'object' ? m.id : null;
+                          if (memberId) onDeleteMember(memberId, name);
+                        }
+                      }}
+                      className="p-1.5 hover:bg-rose-500/15 rounded-lg transition-colors text-rose-500 hover:text-rose-600 dark:hover:text-rose-400"
+                      title={`Remove ${name}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

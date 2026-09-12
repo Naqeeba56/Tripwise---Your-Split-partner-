@@ -129,3 +129,35 @@ body {
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 }
+
+/* ------------------------------------------------------------------
+   Desktop & laptop readability
+   Small utility sizes look tiny on large screens; scale them up on
+   wide viewports while leaving mobile sizing untouched.
+------------------------------------------------------------------ */
+@media (min-width: 1280px) {
+  .text-\[8px\] {
+    font-size: 10px !important;
+  }
+  .text-\[9px\] {
+    font-size: 11px !important;
+  }
+  .text-\[10px\] {
+    font-size: 12px !important;
+  }
+  .text-\[11px\] {
+    font-size: 13px !important;
+  }
+  .text-xs {
+    font-size: 13px !important;
+  }
+  .text-sm {
+    font-size: 15px !important;
+  }
+  .text-base {
+    font-size: 16.5px !important;
+  }
+  .text-lg {
+    font-size: 19px !important;
+  }
+}

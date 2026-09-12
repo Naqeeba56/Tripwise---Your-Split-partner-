@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlaneTakeoff, ChevronDown, Check, Plus } from 'lucide-react';
+import { PlaneTakeoff, ChevronDown, Check, Plus, Trash2 } from 'lucide-react';
 
 export default function GlassTripDropdown({
   trips,
   activeTripId,
   onSelectTrip,
   onOpenNewTripModal,
+  onDeleteTrip,
   isLoggedIn,
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +41,7 @@ export default function GlassTripDropdown({
             <img
               src={activeTrip.image_url || activeTrip.image}
               alt={activeTrip.name}
+              loading="lazy"
               className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-cover border border-teal-500/30 flex-shrink-0"
             />
           ) : (
@@ -76,21 +78,24 @@ export default function GlassTripDropdown({
                 const isSelected = String(trip.id) === String(activeTripId);
                 const cover = trip.image_url || trip.image;
                 return (
-                  <motion.button
+                  <motion.div
                     type="button"
                     key={trip.id}
                     whileHover={{ x: 4 }}
-                    onClick={() => {
-                      onSelectTrip(trip.id);
-                      setIsOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 sm:py-3 rounded-2xl text-left transition-all duration-200 ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 sm:py-3 rounded-2xl text-left transition-all duration-200 group ${
                       isSelected
                         ? 'bg-gradient-to-r from-teal-500/20 to-emerald-500/10 border border-teal-500/30 text-teal-700 dark:text-teal-300 font-semibold shadow-sm'
                         : 'hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold border border-transparent'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectTrip(trip.id);
+                        setIsOpen(false);
+                      }}
+                      className="flex-1 flex items-center gap-3 min-w-0"
+                    >
                       {cover ? (
                         <img
                           src={cover}
@@ -110,14 +115,31 @@ export default function GlassTripDropdown({
                           {trip.members?.length || 0} members
                         </span>
                       </div>
-                    </div>
+                    </button>
 
-                    {isSelected && (
-                      <div className="w-5 h-5 rounded-full bg-teal-500 text-slate-950 flex items-center justify-center shadow-sm flex-shrink-0 ml-2">
-                        <Check className="w-3 h-3 stroke-[2]" />
-                      </div>
-                    )}
-                  </motion.button>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      {isSelected && (
+                        <div className="w-5 h-5 rounded-full bg-teal-500 text-slate-950 flex items-center justify-center shadow-sm flex-shrink-0">
+                          <Check className="w-3 h-3 stroke-[2]" />
+                        </div>
+                      )}
+
+                      {onDeleteTrip && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTrip(trip.id);
+                            setIsOpen(false);
+                          }}
+                          className="p-1.5 hover:bg-rose-500/15 rounded-lg transition-colors text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 opacity-0 group-hover:opacity-100"
+                          title={`Delete ${trip.name}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
                 );
               })}
             </div>

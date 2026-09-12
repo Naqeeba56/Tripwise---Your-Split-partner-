@@ -3,8 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { PlaneTakeoff, Users, ArrowRight, ShieldCheck, Check } from 'lucide-react';
+import { PlaneTakeoff, Users, ArrowRight } from 'lucide-react';
 import JoinTripModal from '@/components/JoinTripModal';
+import { supabase } from '@/lib/supabase';
+import {
+  fetchTripByInviteToken,
+  addMemberInDb,
+  getUserStorageKey,
+} from '@/lib/supabaseDb';
+import { safeSetItem, safeGetItem } from '@/lib/storage';
 
 export default function JoinTripPage() {
   const params = useParams();
@@ -13,65 +20,134 @@ export default function JoinTripPage() {
 
   const [trip, setTrip] = useState(null);
   const [showJoinModal, setShowJoinModal] = useState(true);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // 1. Check Supabase session
   useEffect(() => {
-    // Load trips from localStorage or fallback
-    try {
-      const savedTrips = localStorage.getItem('splittrip_all_trips');
-      if (savedTrips) {
-        const parsed = JSON.parse(savedTrips);
-        const matched = parsed.find(
-          (t) =>
-            t.invite_token === token ||
-            t.inviteToken === token ||
-            t.id === token
-        );
-        if (matched) {
-          setTrip(matched);
-          return;
-        }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserProfile({
+          id: session.user.id,
+          email: session.user.email,
+          name:
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            session.user.email?.split('@')[0] ||
+            'User',
+          avatar:
+            session.user.user_metadata?.avatar_url ||
+            session.user.user_metadata?.picture ||
+            null,
+        });
       }
-    } catch (e) {
-      console.error(e);
-    }
-
-    // Default fallback trip if not found in local cache
-    setTrip({
-      id: token || '1',
-      name: 'Goa Trip 2026',
-      creatorName: 'Naqeeb',
-      creatorUpi: 'naqeeb@upi',
-      invite_token: token,
-      members: [{ name: 'Naqeeb', avatar: null }],
     });
+  }, []);
+
+  // 2. Fetch Trip by Invite Token from Supabase
+  useEffect(() => {
+    if (!token) return;
+
+    const loadTrip = async () => {
+      setLoading(true);
+      try {
+        const dbTrip = await fetchTripByInviteToken(token);
+        if (dbTrip) {
+          setTrip(dbTrip);
+        } else {
+          // Local storage fallback as secondary option
+          const savedTrips = safeGetItem('splittrip_all_trips');
+          if (savedTrips) {
+            const parsed = JSON.parse(savedTrips);
+            const matched = parsed.find(
+              (t) =>
+                t.invite_token === token ||
+                t.inviteToken === token ||
+                t.id === token
+            );
+            if (matched) {
+              setTrip(matched);
+              setLoading(false);
+              return;
+            }
+          }
+
+          // Default fallback trip if not found anywhere
+          setTrip({
+            id: token || '1',
+            name: 'Goa Trip 2026',
+            creatorName: 'Naqeeb',
+            creatorUpi: 'naqeeb@upi',
+            invite_token: token,
+            members: [{ name: 'Naqeeb', avatar: null }],
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching trip for join:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTrip();
   }, [token]);
 
-  const handleJoinComplete = (memberData) => {
+  const handleJoinComplete = async (memberData) => {
     if (!trip) return;
 
     try {
-      const savedTrips = localStorage.getItem('splittrip_all_trips');
-      let all = savedTrips ? JSON.parse(savedTrips) : [];
-      const index = all.findIndex((t) => String(t.id) === String(trip.id));
+      const userId = userProfile?.id || null;
 
-      const updatedMembers = [...(trip.members || []), memberData];
+      // Add member to database
+      const addedMember = await addMemberInDb(
+        trip.id,
+        {
+          ...memberData,
+          role: 'member',
+        },
+        userId
+      );
+
+      // Save locally so it shows up instantly
+      const key = getUserStorageKey(userId, 'trips');
+      const savedTrips = safeGetItem(key);
+      let all = savedTrips ? JSON.parse(savedTrips) : [];
+
+      const updatedMembers = [...(trip.members || []), addedMember];
       const updatedTrip = { ...trip, members: updatedMembers };
 
+      const index = all.findIndex((t) => String(t.id) === String(trip.id));
       if (index >= 0) {
         all[index] = updatedTrip;
       } else {
-        all.push(updatedTrip);
+        all.unshift(updatedTrip);
       }
 
-      localStorage.setItem('splittrip_all_trips', JSON.stringify(all));
-      localStorage.setItem('splittrip_active_id', JSON.stringify(trip.id));
+      safeSetItem(key, all);
+      safeSetItem(getUserStorageKey(userId, 'active_trip_id'), trip.id);
+
+      // Keep legacy keys for full compatibility
+      safeSetItem('splittrip_all_trips', all);
+      safeSetItem('splittrip_active_id', trip.id);
     } catch (err) {
-      console.error(err);
+      console.error('Error recording join in database:', err);
     }
 
     setShowJoinModal(false);
     router.push('/');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+        <div className="animate-pulse space-y-4 text-center">
+          <div className="w-12 h-12 bg-slate-800 rounded-full mx-auto" />
+          <div className="h-4 bg-slate-800 rounded w-32 mx-auto" />
+          <p className="text-xs text-slate-500">Loading trip details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">

@@ -93,6 +93,7 @@ export default function ExpenseCard({
                 <img
                   src={paidByAvatar}
                   alt={paidBy}
+                  loading="lazy"
                   className="w-4 h-4 rounded-full object-cover flex-shrink-0"
                 />
               ) : (

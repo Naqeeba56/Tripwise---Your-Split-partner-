@@ -33,7 +33,9 @@ CREATE TABLE IF NOT EXISTS public.trip_members (
     name TEXT NOT NULL,
     avatar_url TEXT,
     upi_id TEXT DEFAULT '',
+    upi_number TEXT DEFAULT '',
     role TEXT DEFAULT 'member',
+    parent_member_name TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(trip_id, name)
 );

@@ -14,8 +14,11 @@ import {
   Users,
   Compass,
   Megaphone,
+  ShieldCheck,
+  UserCircle,
 } from 'lucide-react';
 import GlassTripDropdown from './GlassTripDropdown';
+import { isAdminEmail } from '@/lib/admin';
 
 export default function Header({
   trips = [],
@@ -25,6 +28,7 @@ export default function Header({
   onOpenInviteModal,
   onOpenAuthModal,
   onSignOut,
+  onDeleteTrip,
   userProfile,
   darkMode,
   setDarkMode,
@@ -35,6 +39,9 @@ export default function Header({
 }) {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: PieChart },
+    ...(userProfile
+      ? [{ id: 'profile', label: 'My Trips', icon: UserCircle }]
+      : []),
     {
       id: 'settlements',
       label: 'Settlements',
@@ -81,6 +88,7 @@ export default function Header({
                   activeTripId={activeTripId}
                   onSelectTrip={onSelectTrip}
                   onOpenNewTripModal={onOpenNewTripModal}
+                  onDeleteTrip={onDeleteTrip}
                   isLoggedIn={!!userProfile}
                 />
               </div>
@@ -105,6 +113,7 @@ export default function Header({
                     <img
                       src={userProfile.avatar || userProfile.photoURL}
                       alt={userProfile.name}
+                      loading="lazy"
                       className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-teal-500/30"
                     />
                   ) : (
@@ -134,6 +143,17 @@ export default function Header({
                 <span>Sign In</span>
               </button>
             )}
+
+            {userProfile && isAdminEmail(userProfile.email) && (
+                <a
+                  href="/admin"
+                  className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 p-2 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm"
+                  title="Admin Dashboard"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 stroke-[2]" />
+                  <span className="hidden md:inline">Admin</span>
+                </a>
+              )}
 
             <button
               onClick={onOpenNewTripModal}

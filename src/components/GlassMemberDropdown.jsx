@@ -53,7 +53,7 @@ export default function GlassMemberDropdown({ members = [], selectedMember, onSe
             transition={{ duration: 0.15 }}
             className="absolute left-0 right-0 mt-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 z-50 overflow-hidden"
           >
-            <div className="max-h-48 overflow-y-auto space-y-1">
+            <div className="max-h-40 sm:max-h-48 overflow-y-auto space-y-1">
               {members.map((m) => {
                 const memberName = typeof m === 'string' ? m : m.name;
                 const avatar = typeof m === 'object' ? (m.avatar_url || m.avatar) : null;
@@ -77,6 +77,7 @@ export default function GlassMemberDropdown({ members = [], selectedMember, onSe
                         <img
                           src={avatar}
                           alt={memberName}
+                          loading="lazy"
                           className="w-5 h-5 rounded-full object-cover flex-shrink-0"
                         />
                       ) : (

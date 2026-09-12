@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { safeSetItem, safeGetItem } from './storage';
 
 /**
  * Supabase Database Service with User-Isolation and Storage Cache
@@ -16,6 +17,73 @@ export const isValidUuid = (str) => {
 /**
  * Ensures user profile exists in Supabase DB profiles table
  */
+// --- Resilient member/trip helpers ---------------------------------
+// Some projects are missing `upi_number` / `parent_member_name` on
+// trip_members. We query/insert the full set first and transparently
+// retry with a safe subset so data ALWAYS persists to Supabase.
+const MEMBER_FULL_COLS = 'id,name,avatar_url,upi_id,upi_number,role,parent_member_name,user_id';
+const MEMBER_SAFE_COLS = 'id,name,avatar_url,upi_id,role,user_id';
+
+const TRIP_SELECT_FULL = `
+  id,name,image_url,created_by,creator_name,creator_upi,invite_token,
+  daily_budget_limit,expense_budget_limit,created_at,
+  trip_members (${MEMBER_FULL_COLS})
+`;
+const TRIP_SELECT_SAFE = `
+  id,name,image_url,created_by,creator_name,creator_upi,invite_token,
+  daily_budget_limit,expense_budget_limit,created_at,
+  trip_members (${MEMBER_SAFE_COLS})
+`;
+
+const mapMember = (m) => ({
+  id: m.id,
+  name: m.name,
+  avatar: m.avatar_url,
+  avatar_url: m.avatar_url,
+  upi_id: m.upi_id,
+  upi_number: m.upi_number || '',
+  role: m.role,
+  parentMemberName: m.parent_member_name || null,
+  userId: m.user_id,
+});
+
+const mapTrip = (t) => ({
+  id: t.id,
+  name: t.name,
+  image_url: t.image_url,
+  image: t.image_url,
+  createdBy: t.created_by,
+  creatorName: t.creator_name,
+  creatorUpi: t.creator_upi,
+  invite_token: t.invite_token,
+  inviteToken: t.invite_token,
+  daily_budget_limit: t.daily_budget_limit,
+  expense_budget_limit: t.expense_budget_limit,
+  members: (t.trip_members || []).map(mapMember),
+});
+
+// Runs a trips query against Supabase; falls back to the safe column set
+// if the live schema is missing optional columns.
+async function runTripSelect(queryFn) {
+  let res = await queryFn(TRIP_SELECT_FULL);
+  if (res.error) {
+    res = await queryFn(TRIP_SELECT_SAFE);
+  }
+  return res;
+}
+
+// Inserts a trip_member, retrying without optional columns on failure.
+async function insertMemberSafe(payload) {
+  let { error } = await supabase.from('trip_members').insert(payload);
+  if (error && (payload.upi_number !== undefined || payload.parent_member_name !== undefined)) {
+    const safe = { ...payload };
+    delete safe.upi_number;
+    delete safe.parent_member_name;
+    ({ error } = await supabase.from('trip_members').insert(safe));
+  }
+  return error;
+}
+
 export const ensureProfileExists = async (userId, userObj = {}) => {
   if (!isSupabaseConfigured() || !isValidUuid(userId)) return;
   try {
@@ -33,61 +101,58 @@ export const ensureProfileExists = async (userId, userObj = {}) => {
 
 /**
  * Fetch trips belonging to the authenticated user
+ * Returns: Trips created by user + trips they're a member of
  */
 export const fetchUserTrips = async (userId) => {
   if (!userId) return [];
 
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase
-        .from('trips')
-        .select(`
-          id,
-          name,
-          image_url,
-          created_by,
-          creator_name,
-          creator_upi,
-          invite_token,
-          daily_budget_limit,
-          expense_budget_limit,
-          created_at,
-          trip_members (
-            id,
-            name,
-            avatar_url,
-            upi_id,
-            upi_number,
-            role,
-            parent_member_name
-          )
-        `)
-        .order('created_at', { ascending: false });
+      // Step 1: Get trips created by user (resilient to missing columns)
+      const resCreated = await runTripSelect((sel) =>
+        supabase
+          .from('trips')
+          .select(sel)
+          .eq('created_by', userId)
+          .order('created_at', { ascending: false })
+      );
+      const createdTrips = resCreated.data || [];
 
-      if (!error && data) {
-        return data.map((t) => ({
-          id: t.id,
-          name: t.name,
-          image_url: t.image_url,
-          image: t.image_url,
-          createdBy: t.created_by,
-          creatorName: t.creator_name,
-          creatorUpi: t.creator_upi,
-          invite_token: t.invite_token,
-          inviteToken: t.invite_token,
-          daily_budget_limit: t.daily_budget_limit,
-          expense_budget_limit: t.expense_budget_limit,
-          members: t.trip_members?.map((m) => ({
-            id: m.id,
-            name: m.name,
-            avatar: m.avatar_url,
-            avatar_url: m.avatar_url,
-            upi_id: m.upi_id,
-            upi_number: m.upi_number || '',
-            role: m.role,
-            parentMemberName: m.parent_member_name || null,
-          })) || [],
-        }));
+      // Step 2: Get trips where user is a member (but not creator)
+      const { data: memberTripsData } = await supabase
+        .from('trip_members')
+        .select('trip_id')
+        .eq('user_id', userId);
+
+      let memberTrips = [];
+      if (memberTripsData && memberTripsData.length > 0) {
+        const tripIds = memberTripsData.map((m) => m.trip_id);
+        const resMembers = await runTripSelect((sel) =>
+          supabase
+            .from('trips')
+            .select(sel)
+            .in('id', tripIds)
+            .order('created_at', { ascending: false })
+        );
+        memberTrips = resMembers.data || [];
+      }
+
+      // Step 3: Merge and deduplicate by trip ID
+      const allTrips = [...(createdTrips || []), ...memberTrips];
+      const uniqueTripsMap = new Map();
+
+      allTrips.forEach((trip) => {
+        if (!uniqueTripsMap.has(trip.id)) {
+          uniqueTripsMap.set(trip.id, trip);
+        }
+      });
+
+      const data = Array.from(uniqueTripsMap.values()).sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+
+      if (data) {
+        return data.map(mapTrip);
       }
     } catch (err) {
       console.warn('Supabase trips query fallback:', err);
@@ -96,7 +161,7 @@ export const fetchUserTrips = async (userId) => {
 
   // User-scoped Local Storage fallback
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem(getUserStorageKey(userId, 'trips'));
+    const saved = safeGetItem(getUserStorageKey(userId, 'trips'));
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -198,10 +263,10 @@ export const createTripInDb = async (tripData, userId) => {
             memberPayload.user_id = userId;
           }
 
-          let { error: mError } = await supabase.from('trip_members').insert(memberPayload);
+          let mError = await insertMemberSafe(memberPayload);
           if (mError && memberPayload.user_id) {
             delete memberPayload.user_id;
-            await supabase.from('trip_members').insert(memberPayload);
+            mError = await insertMemberSafe(memberPayload);
           }
         }
       }
@@ -213,10 +278,10 @@ export const createTripInDb = async (tripData, userId) => {
   // Update User-scoped Storage
   if (typeof window !== 'undefined' && userId) {
     const key = getUserStorageKey(userId, 'trips');
-    const existing = localStorage.getItem(key);
+    const existing = safeGetItem(key);
     const parsed = existing ? JSON.parse(existing) : [];
     const updated = [formattedTrip, ...parsed];
-    localStorage.setItem(key, JSON.stringify(updated));
+    safeSetItem(key, updated);
   }
 
   return formattedTrip;
@@ -254,7 +319,7 @@ export const fetchTripExpenses = async (tripId, userId) => {
   }
 
   if (typeof window !== 'undefined' && userId) {
-    const saved = localStorage.getItem(getUserStorageKey(userId, `expenses_${tripId}`));
+    const saved = safeGetItem(getUserStorageKey(userId, `expenses_${tripId}`));
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -306,22 +371,27 @@ export const createExpenseInDb = async (expenseData, userId) => {
 
   if (typeof window !== 'undefined' && userId) {
     const key = getUserStorageKey(userId, `expenses_${expenseData.tripId}`);
-    const existing = localStorage.getItem(key);
+    const existing = safeGetItem(key);
     const parsed = existing ? JSON.parse(existing) : [];
     const updated = [newExp, ...parsed];
-    localStorage.setItem(key, JSON.stringify(updated));
+    safeSetItem(key, updated);
   }
 
   return newExp;
 };
 
 /**
- * Delete / settle an expense
+ * Delete / settle an expense (with trip_id verification for security)
  */
 export const deleteExpenseInDb = async (expenseId, tripId, userId) => {
-  if (isSupabaseConfigured() && isValidUuid(expenseId)) {
+  if (isSupabaseConfigured() && isValidUuid(expenseId) && isValidUuid(tripId)) {
     try {
-      await supabase.from('expenses').delete().eq('id', expenseId);
+      // IMPORTANT: Filter by trip_id to prevent users from deleting other trips' expenses
+      await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expenseId)
+        .eq('trip_id', tripId);
     } catch (err) {
       console.warn('Supabase delete expense error:', err);
     }
@@ -329,11 +399,11 @@ export const deleteExpenseInDb = async (expenseId, tripId, userId) => {
 
   if (typeof window !== 'undefined' && userId && tripId) {
     const key = getUserStorageKey(userId, `expenses_${tripId}`);
-    const existing = localStorage.getItem(key);
+    const existing = safeGetItem(key);
     if (existing) {
       const parsed = JSON.parse(existing);
       const filtered = parsed.filter((e) => String(e.id) !== String(expenseId));
-      localStorage.setItem(key, JSON.stringify(filtered));
+      safeSetItem(key, filtered);
     }
   }
 };
@@ -342,9 +412,13 @@ export const deleteExpenseInDb = async (expenseId, tripId, userId) => {
  * Add member to trip in DB and user cache
  */
 export const addMemberInDb = async (tripId, memberObj, userId) => {
+  const newMember = {
+    id: memberObj.id || String(Date.now() + Math.random()),
+    ...memberObj
+  };
   if (isSupabaseConfigured() && isValidUuid(tripId)) {
     try {
-      await supabase.from('trip_members').insert({
+      const payload = {
         trip_id: tripId,
         name: memberObj.name,
         avatar_url: memberObj.avatar || null,
@@ -352,11 +426,76 @@ export const addMemberInDb = async (tripId, memberObj, userId) => {
         upi_number: memberObj.upi_number || '',
         role: memberObj.role || 'member',
         parent_member_name: memberObj.parentMemberName || null,
-      });
+      };
+
+      if (userId && isValidUuid(userId)) {
+        payload.user_id = userId;
+      }
+
+      let { data, error } = await supabase
+        .from('trip_members')
+        .insert(payload)
+        .select()
+        .single();
+
+      // Retry without optional columns if the live schema lacks them
+      if (error && (payload.upi_number !== undefined || payload.parent_member_name !== undefined)) {
+        const safe = { ...payload };
+        delete safe.upi_number;
+        delete safe.parent_member_name;
+        const retry = await supabase.from('trip_members').insert(safe).select().single();
+        data = retry.data;
+        error = retry.error;
+      }
+
+      if (!error && data) {
+        newMember.id = data.id;
+        newMember.avatar_url = data.avatar_url;
+        newMember.avatar = data.avatar_url;
+        newMember.upi_id = data.upi_id;
+        newMember.upi_number = data.upi_number || '';
+        newMember.parentMemberName = data.parent_member_name || null;
+        newMember.role = data.role;
+      }
     } catch (err) {
       console.warn('Supabase add member error:', err);
     }
   }
+  return newMember;
+};
+
+/**
+ * Fetch a trip by its invite token (for joining trips)
+ */
+export const fetchTripByInviteToken = async (token) => {
+  if (!token) return null;
+
+  if (isSupabaseConfigured()) {
+    try {
+      let { data, error } = await supabase
+        .from('trips')
+        .select(TRIP_SELECT_FULL)
+        .eq('invite_token', token)
+        .single();
+
+      if (error) {
+        const res = await supabase
+          .from('trips')
+          .select(TRIP_SELECT_SAFE)
+          .eq('invite_token', token)
+          .single();
+        data = res.data;
+        error = res.error;
+      }
+
+      if (!error && data) {
+        return mapTrip(data);
+      }
+    } catch (err) {
+      console.warn('Supabase fetch trip by invite token notice:', err);
+    }
+  }
+  return null;
 };
 
 /**
@@ -380,4 +519,87 @@ export const createSettlementInDb = async (tripId, settlementData, userId) => {
     }
   }
 };
+
+/**
+ * Delete a member from a trip
+ */
+export const deleteMemberInDb = async (tripId, memberId, userId) => {
+  if (isSupabaseConfigured() && isValidUuid(tripId) && isValidUuid(memberId)) {
+    try {
+      // Delete from trip_members table with both trip and member verification
+      const { error } = await supabase
+        .from('trip_members')
+        .delete()
+        .eq('id', memberId)
+        .eq('trip_id', tripId);
+
+      if (error) {
+        console.error('Error deleting member:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Supabase delete member error:', err);
+      return false;
+    }
+  }
+  return false;
+};
+
+/**
+ * Delete an entire trip and all its related data
+ */
+export const deleteTripInDb = async (tripId, userId) => {
+  if (isSupabaseConfigured() && isValidUuid(tripId)) {
+    try {
+      // First, verify the user is the trip creator
+      const { data: trip, error: fetchError } = await supabase
+        .from('trips')
+        .select('created_by')
+        .eq('id', tripId)
+        .single();
+
+      if (fetchError || !trip) {
+        console.error('Trip not found:', fetchError);
+        return false;
+      }
+
+      // IMPORTANT: Only allow trip creator to delete
+      if (trip.created_by !== userId) {
+        console.error('Only trip creator can delete this trip');
+        return false;
+      }
+
+      // Delete the trip (cascade will delete members, expenses, settlements)
+      const { error: deleteError } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId)
+        .eq('created_by', userId); // Double-check ownership
+
+      if (deleteError) {
+        console.error('Error deleting trip:', deleteError);
+        return false;
+      }
+
+      // Remove from localStorage
+      if (typeof window !== 'undefined' && userId) {
+        const key = getUserStorageKey(userId, 'trips');
+        const existing = safeGetItem(key);
+        if (existing) {
+          const parsed = JSON.parse(existing);
+          const filtered = parsed.filter((t) => String(t.id) !== String(tripId));
+          safeSetItem(key, filtered);
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Supabase delete trip error:', err);
+      return false;
+    }
+  }
+  return false;
+};
+
 

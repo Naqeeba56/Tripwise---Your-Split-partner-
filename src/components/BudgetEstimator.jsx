@@ -852,7 +852,7 @@ export default function BudgetEstimator({ onStartTripWithBudget }) {
 
             {/* ── Date range picker ── */}
             <div>
-              <label className="text-[10px] font-semibold uppercase text-slate-400 block mb-1.5 flex items-center gap-1">
+              <label className="text-[10px] font-semibold uppercase text-slate-400 flex items-center gap-1 mb-1.5">
                 <CalendarDays className="w-3 h-3" />Trip Dates
               </label>
               <div className="grid grid-cols-2 gap-2.5">

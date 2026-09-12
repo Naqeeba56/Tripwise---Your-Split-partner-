@@ -33,6 +33,7 @@ import ExpenseCard from '@/components/ExpenseCard';
 import ExpenseFeed from '@/components/ExpenseFeed';
 import BudgetTracker from '@/components/BudgetTracker';
 import BudgetEstimator from '@/components/BudgetEstimator';
+import ProfilePanel from '@/components/ProfilePanel';
 import SettlementsTab from '@/components/SettlementsTab';
 import MembersTab from '@/components/MembersTab';
 import CommunityAnnouncements from '@/components/CommunityAnnouncements';
@@ -50,10 +51,13 @@ import {
   deleteExpenseInDb,
   addMemberInDb,
   createSettlementInDb,
+  deleteMemberInDb,
+  deleteTripInDb,
   getUserStorageKey,
 } from '@/lib/supabaseDb';
 import { calculateNetBalances, calculateOptimalSettlements } from '@/lib/settlementMath';
 import { animateCounter } from '@/lib/animeAnimations';
+import { safeSetItem, safeGetItem } from '@/lib/storage';
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(true);
@@ -174,10 +178,10 @@ export default function Home() {
 
       // Load settled state from user storage
       if (typeof window !== 'undefined') {
-        const savedSettled = localStorage.getItem(getUserStorageKey(userId, 'settled_ids'));
+        const savedSettled = safeGetItem(getUserStorageKey(userId, 'settled_ids'));
         if (savedSettled) setSettledIds(JSON.parse(savedSettled));
 
-        const savedMap = localStorage.getItem(getUserStorageKey(userId, 'settlement_map'));
+        const savedMap = safeGetItem(getUserStorageKey(userId, 'settlement_map'));
         if (savedMap) setSettlementDetailsMap(JSON.parse(savedMap));
       }
     } catch (err) {
@@ -206,10 +210,14 @@ export default function Home() {
 
   useEffect(() => {
     if (currentTrip && currentTrip.members?.length > 0) {
+      // Find first non-submember to be the default payer
+      const payer = currentTrip.members.find((m) => !m.parentMemberName);
       const firstMemberName =
-        typeof currentTrip.members[0] === 'string'
-          ? currentTrip.members[0]
-          : currentTrip.members[0].name;
+        typeof payer === 'string'
+          ? payer
+          : payer?.name || (typeof currentTrip.members[0] === 'string'
+              ? currentTrip.members[0]
+              : currentTrip.members[0].name);
       setPaidBy(firstMemberName);
     }
   }, [currentTrip]);
@@ -262,25 +270,43 @@ export default function Home() {
       return;
     }
 
-    if (!currentTrip) return;
+    if (!currentTrip) {
+      setAppError('No active trip selected.');
+      return;
+    }
 
-    const newExp = await createExpenseInDb(
-      {
-        tripId: currentTrip.id,
-        title: title.trim(),
-        amount: numAmount,
-        paidBy: paidBy || currentTrip.members?.[0]?.name || userProfile?.name || 'User',
-        category: category || 'Food',
-        excludedMembers: excludedMembers,
-      },
-      userProfile?.id
-    );
+    if (!paidBy) {
+      setAppError('Please select who paid for this expense.');
+      return;
+    }
 
-    setExpenses([newExp, ...expenses]);
-    setTitle('');
-    setAmount('');
-    setExcludedMembers([]);
-    setAppError(null);
+    try {
+      const newExp = await createExpenseInDb(
+        {
+          tripId: currentTrip.id,
+          title: title.trim(),
+          amount: numAmount,
+          paidBy: paidBy,
+          category: category || 'Food',
+          excludedMembers: excludedMembers,
+        },
+        userProfile?.id
+      );
+
+      if (!newExp || !newExp.id) {
+        setAppError('Failed to create expense. Please try again.');
+        return;
+      }
+
+      setExpenses([newExp, ...expenses]);
+      setTitle('');
+      setAmount('');
+      setExcludedMembers([]);
+      setAppError(null);
+    } catch (err) {
+      console.error('Error adding expense:', err);
+      setAppError('Error adding expense. Please try again.');
+    }
   };
 
   const handleSettleExpenseCard = async (expenseId) => {
@@ -296,12 +322,24 @@ export default function Home() {
       return;
     }
 
-    const createdTrip = await createTripInDb(tripData, userProfile.id);
-    const updatedTrips = [createdTrip, ...allTrips];
-    setAllTrips(updatedTrips);
-    setActiveTripId(createdTrip.id);
-    setExpenses([]);
-    setShowNewTripModal(false);
+    try {
+      const createdTrip = await createTripInDb(tripData, userProfile.id);
+      
+      if (!createdTrip || !createdTrip.id) {
+        setAppError('Failed to create trip. Please try again.');
+        return;
+      }
+
+      const updatedTrips = [createdTrip, ...allTrips];
+      setAllTrips(updatedTrips);
+      setActiveTripId(createdTrip.id);
+      setExpenses([]);
+      setShowNewTripModal(false);
+      setAppError(null);
+    } catch (err) {
+      console.error('Error creating trip:', err);
+      setAppError('Error creating trip. Please try again.');
+    }
   };
 
   const handleAddMember = async (memberObj) => {
@@ -319,7 +357,7 @@ export default function Home() {
 
     // Save to user storage
     if (userProfile?.id && typeof window !== 'undefined') {
-      localStorage.setItem(getUserStorageKey(userProfile.id, 'trips'), JSON.stringify(updatedTrips));
+      safeSetItem(getUserStorageKey(userProfile.id, 'trips'), updatedTrips);
     }
   };
 
@@ -333,7 +371,7 @@ export default function Home() {
     });
     setAllTrips(updatedTrips);
     if (userProfile?.id && typeof window !== 'undefined') {
-      localStorage.setItem(getUserStorageKey(userProfile.id, 'trips'), JSON.stringify(updatedTrips));
+      safeSetItem(getUserStorageKey(userProfile.id, 'trips'), updatedTrips);
     }
   };
 
@@ -358,8 +396,8 @@ export default function Home() {
     setSettlementDetailsMap(updatedMap);
 
     if (userProfile?.id && typeof window !== 'undefined') {
-      localStorage.setItem(getUserStorageKey(userProfile.id, 'settled_ids'), JSON.stringify(updatedSettled));
-      localStorage.setItem(getUserStorageKey(userProfile.id, 'settlement_map'), JSON.stringify(updatedMap));
+      safeSetItem(getUserStorageKey(userProfile.id, 'settled_ids'), updatedSettled);
+      safeSetItem(getUserStorageKey(userProfile.id, 'settlement_map'), updatedMap);
     }
   };
 
@@ -384,8 +422,81 @@ export default function Home() {
     setSettlementDetailsMap(updatedMap);
 
     if (userProfile?.id && typeof window !== 'undefined') {
-      localStorage.setItem(getUserStorageKey(userProfile.id, 'settled_ids'), JSON.stringify(updatedSettled));
-      localStorage.setItem(getUserStorageKey(userProfile.id, 'settlement_map'), JSON.stringify(updatedMap));
+      safeSetItem(getUserStorageKey(userProfile.id, 'settled_ids'), updatedSettled);
+      safeSetItem(getUserStorageKey(userProfile.id, 'settlement_map'), updatedMap);
+    }
+  };
+
+  // Delete Member Handler
+  const handleDeleteMember = async (memberId, memberName) => {
+    if (!currentTrip || !userProfile?.id) return;
+
+    try {
+      const success = await deleteMemberInDb(currentTrip.id, memberId, userProfile.id);
+      
+      if (!success) {
+        setAppError('Failed to delete member. You may only remove members from your own trips.');
+        return;
+      }
+
+      // Update local state
+      const updatedMembers = currentTrip.members.filter((m) => {
+        const mId = typeof m === 'object' ? m.id : null;
+        return String(mId) !== String(memberId);
+      });
+
+      const updatedTrips = allTrips.map((t) => {
+        if (String(t.id) === String(currentTrip.id)) {
+          return { ...t, members: updatedMembers };
+        }
+        return t;
+      });
+
+      setAllTrips(updatedTrips);
+      setAppError(null);
+    } catch (err) {
+      console.error('Error deleting member:', err);
+      setAppError('Error deleting member. Please try again.');
+    }
+  };
+
+  // Delete Trip Handler
+  const handleDeleteTrip = async (tripIdToDelete) => {
+    if (!userProfile?.id) return;
+
+    // Confirm deletion
+    if (!window.confirm('Are you sure you want to delete this entire trip? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const success = await deleteTripInDb(tripIdToDelete, userProfile.id);
+      
+      if (!success) {
+        setAppError('Failed to delete trip. You may only delete trips you created.');
+        return;
+      }
+
+      // Update local state
+      const updatedTrips = allTrips.filter((t) => String(t.id) !== String(tripIdToDelete));
+      setAllTrips(updatedTrips);
+
+      // Reset active trip if it was deleted
+      if (String(activeTripId) === String(tripIdToDelete)) {
+        if (updatedTrips.length > 0) {
+          setActiveTripId(updatedTrips[0].id);
+          const tripExps = await fetchTripExpenses(updatedTrips[0].id, userProfile.id);
+          setExpenses(tripExps);
+        } else {
+          setActiveTripId(null);
+          setExpenses([]);
+        }
+      }
+
+      setAppError(null);
+    } catch (err) {
+      console.error('Error deleting trip:', err);
+      setAppError('Error deleting trip. Please try again.');
     }
   };
 
@@ -520,25 +631,25 @@ export default function Home() {
                   <div className="lg:col-span-5 space-y-4 sm:space-y-6">
                     {/* Metric Cards with Anime.js animated counters */}
                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
-                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm">
+                        <p className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 line-clamp-1">
                           Total Spent
                         </p>
                         <h3
                           ref={totalSpentRef}
-                          className="text-lg sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1 sm:mt-2 truncate"
+                          className="text-base sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1.5 sm:mt-2 break-words"
                         >
                           ₹{totalSpent.toLocaleString('en-IN')}
                         </h3>
                       </div>
 
-                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-3xl shadow-sm">
-                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm">
+                        <p className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 line-clamp-1">
                           Per Person
                         </p>
                         <h3
                           ref={perPersonRef}
-                          className="text-lg sm:text-3xl font-bold text-teal-600 dark:text-teal-400 mt-1 sm:mt-2 truncate"
+                          className="text-base sm:text-3xl font-bold text-teal-600 dark:text-teal-400 mt-1.5 sm:mt-2 break-words"
                         >
                           ₹{Math.round(perPersonShare).toLocaleString('en-IN')}
                         </h3>
@@ -546,15 +657,15 @@ export default function Home() {
                     </div>
 
                     {/* Add Expense Form */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-sm">
-                      <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3.5 sm:mb-5 flex items-center gap-2">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
+                      <h2 className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sm:mb-5 flex items-center gap-2">
                         <Plus className="w-5 h-5 text-teal-500 stroke-[2]" />
                         <span>Add Expense</span>
                       </h2>
 
-                      <form onSubmit={handleAddExpense} className="space-y-3.5 sm:space-y-4">
+                      <form onSubmit={handleAddExpense} className="space-y-3 sm:space-y-4">
                         <div>
-                          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
                             Expense Title
                           </label>
                           <input
@@ -562,11 +673,11 @@ export default function Home() {
                             placeholder="e.g. Dinner, Fuel, Villa"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl px-3 py-3 sm:py-3 text-sm sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
                           />
 
                           {appError && (
-                            <span className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1 block">
+                            <span className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1">
                               ⚠️ {appError}
                             </span>
                           )}
@@ -574,7 +685,7 @@ export default function Home() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                            <label className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
                               Amount (₹)
                             </label>
                             <input
@@ -582,16 +693,20 @@ export default function Home() {
                               placeholder="0"
                               value={amount}
                               onChange={(e) => setAmount(e.target.value)}
-                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl px-3 py-3 sm:py-3 text-sm sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
                             />
                           </div>
 
                           <div>
-                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                            <label className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
                               Paid By
                             </label>
                             <GlassMemberDropdown
-                              members={currentTrip.members || []}
+                              members={
+                                (currentTrip?.members || []).filter(
+                                  (m) => !m.parentMemberName // Exclude submembers
+                                )
+                              }
                               selectedMember={paidBy}
                               onSelectMember={setPaidBy}
                             />
@@ -599,7 +714,7 @@ export default function Home() {
                         </div>
 
                         <div>
-                          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
                             Category
                           </label>
                           <GlassCategoryDropdown
@@ -611,10 +726,10 @@ export default function Home() {
                         {/* Exclude Members Option */}
                         {currentTrip?.members?.length > 1 && (
                           <div>
-                            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                              Exclude Members from Split (Optional)
+                            <label className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
+                              Exclude Members (Optional)
                             </label>
-                            <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                            <div className="flex flex-wrap gap-2 sm:gap-2.5 p-3 sm:p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl max-h-40 sm:max-h-32 overflow-y-auto">
                               {currentTrip.members.map((m, idx) => {
                                 const mName = typeof m === 'string' ? m : m.name;
                                 const isExcluded = excludedMembers.includes(mName);
@@ -629,9 +744,9 @@ export default function Home() {
                                         setExcludedMembers([...excludedMembers, mName]);
                                       }
                                     }}
-                                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition border flex items-center gap-1 ${isExcluded
+                                    className={`px-3 sm:px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition border flex items-center gap-1.5 whitespace-nowrap ${isExcluded
                                       ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 line-through'
-                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-500/40'
                                       }`}
                                   >
                                     <span>{mName}</span>
@@ -645,7 +760,7 @@ export default function Home() {
 
                         <button
                           type="submit"
-                          className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-2"
+                          className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-3 active:scale-95"
                         >
                           <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2]" />
                           <span>Add Expense</span>
@@ -669,6 +784,32 @@ export default function Home() {
                       getAvatarForMember={getAvatarForMember}
                     />
                   </div>
+                </motion.div>
+              )}
+
+              {/* PROFILE TAB: My trips & account overview */}
+              {activeTab === 'profile' && userProfile && (
+                <motion.div
+                  key="profile"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="pb-16 sm:pb-6"
+                >
+                  <ProfilePanel
+                    userProfile={userProfile}
+                    allTrips={allTrips}
+                    expenses={expenses}
+                    settlements={settlements}
+                    spentTotal={totalSpent}
+                    onOpenTrip={(tripId) => {
+                      handleSelectTrip(tripId);
+                      setActiveTab('dashboard');
+                    }}
+                    onDeleteTrip={handleDeleteTrip}
+                    onCreateTrip={() => setShowNewTripModal(true)}
+                  />
                 </motion.div>
               )}
 
@@ -731,6 +872,7 @@ export default function Home() {
                     <MembersTab
                       trip={currentTrip}
                       onAddMember={handleAddMember}
+                      onDeleteMember={handleDeleteMember}
                       currentUserId={userProfile?.id}
                     />
                   ) : (

@@ -56,6 +56,12 @@ export const generateTripPdfReceipt = (
 
   // Status Badge
   const allSettled = settlements.length > 0 && settlements.every((s) => settledIds.includes(s.id));
+  const settledAmountTotal = settlements
+    .filter((s) => settledIds.includes(s.id))
+    .reduce((sum, s) => sum + Number(s.amount || 0), 0);
+  const pendingAmountTotal = settlements
+    .filter((s) => !settledIds.includes(s.id))
+    .reduce((sum, s) => sum + Number(s.amount || 0), 0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   if (allSettled) {
@@ -104,6 +110,29 @@ export const generateTripPdfReceipt = (
 
   yPos += 30;
 
+  // Completion Ribbon — only when every settlement has been paid.
+  if (allSettled) {
+    doc.setFillColor(...emeraldColor);
+    doc.setDrawColor(...emeraldColor);
+    doc.roundedRect(14, yPos, 182, 16, 2, 2, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text('✔ TRIP COMPLETE — ALL SETTLEMENTS PAID', 20, yPos + 7);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Settled: Rs. ${settledAmountTotal.toLocaleString('en-IN')}  ·  Pending: Rs. 0  ·  ${settlements.length} transactions logged`, 20, yPos + 13);
+    yPos += 24;
+  } else if (settledAmountTotal > 0) {
+    doc.setFillColor(...emeraldColor);
+    doc.roundedRect(14, yPos, 182, 14, 2, 2, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`Progress: Rs. ${settledAmountTotal.toLocaleString('en-IN')} settled  ·  Rs. ${pendingAmountTotal.toLocaleString('en-IN')} remaining`, 20, yPos + 9);
+    yPos += 22;
+  }
+
   // 1. Member Balance Breakdown Table
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
@@ -151,10 +180,24 @@ export const generateTripPdfReceipt = (
     return [`${s.from} -> ${s.to}`, `Rs. ${s.amount.toLocaleString('en-IN')}`, status, method, txId, date];
   });
 
+  const settledTotal = settlements.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+  const footRow = settlements.length > 0
+    ? [[
+        'TOTAL',
+        `Rs. ${settledTotal.toLocaleString('en-IN')}`,
+        `${settledIds.length} / ${settlements.length} settled`,
+        '',
+        '',
+        '',
+      ]]
+    : null;
+
   autoTable(doc, {
     startY: yPos + 3,
     head: [['Transaction', 'Amount', 'Status', 'Method', 'Transaction Ref', 'Settled Date']],
-    body: settlementRows.length > 0 ? settlementRows : [['No pending settlements', '-', 'COMPLETED', '-', '-', '-']],
+    body: settlementRows.length > 0 ? settlementRows : [['No settlements', '-', '-', '-', '-', '-']],
+    foot: footRow,
+    footStyles: { fillColor: darkColor, textColor: [255, 255, 255], fontStyle: 'bold' },
     theme: 'grid',
     headStyles: { fillColor: primaryColor, textColor: [15, 23, 42], fontStyle: 'bold' },
     styles: { fontSize: 8, cellPadding: 2.5 },

@@ -281,13 +281,13 @@ return (
         {kpiCards.map(function (c) {
           const Icon = c.icon;
           return (
-            <div key={c.label} className={'rounded-3xl border p-4 sm:p-5 bg-white dark:bg-slate-900 ' + c.bg}>
-              <div className={'flex items-center gap-2 mb-2 ' + c.color}>
-                <Icon className="w-4 h-4" />
-                <span className="text-[10px] uppercase tracking-wider font-bold opacity-80">{c.label}</span>
+            <div key={c.label} className={'rounded-2xl border p-3 sm:p-4 bg-white dark:bg-slate-900 ' + c.bg}>
+              <div className={'flex items-center gap-1.5 mb-1 ' + c.color}>
+                <Icon className="w-3.5 h-3.5" />
+                <span className="text-[10px] uppercase tracking-wider font-bold opacity-80 truncate">{c.label}</span>
               </div>
-              <div className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 leading-tight break-words">{c.value}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">{c.sub}</div>
+              <div className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 leading-tight break-words">{c.value}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5 truncate">{c.sub}</div>
             </div>
           );
         })}
@@ -296,7 +296,7 @@ return (
       {/* Live users table */}
       <Card title="Live Users" icon={Users}>
         {data.profiles.length ? (
-          <div className="overflow-x-auto -mx-1">
+          <div className="overflow-auto max-h-[360px] no-scrollbar">
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
                 <tr className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -307,7 +307,7 @@ return (
                 </tr>
               </thead>
               <tbody>
-                {data.profiles.slice(0, 12).map(function (p) {
+                {data.profiles.slice(0, 30).map(function (p) {
                   return (
                     <tr key={p.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                       <td className="py-2 pr-3">
@@ -334,7 +334,7 @@ return (
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title="User Growth" icon={TrendingUp}>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={168}>
             <AreaChart data={stats.userGrowth} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="gUsers" x1="0" y1="0" x2="0" y2="1">
@@ -352,15 +352,15 @@ return (
         </Card>
 
         <Card title="Spend by Category" icon={PieIcon}>
-          <div className="flex flex-col sm:flex-row items-center justify-center h-[240px] gap-2">
-            <ResponsiveContainer width="55%" height={240}>
+          <div className="flex flex-col sm:flex-row items-center justify-center h-[168px] gap-2">
+            <ResponsiveContainer width="55%" height={168}>
               <PieChart>
                 <Pie
                   data={stats.categories.length ? stats.categories : [{ name: 'No data', value: 1 }]}
                   dataKey="value"
                   nameKey="name"
-                  innerRadius={55}
-                  outerRadius={85}
+                  innerRadius={42}
+                  outerRadius={64}
                   paddingAngle={3}
                   stroke="none"
                 >
@@ -393,8 +393,8 @@ return (
 
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title="Monthly Spend" icon={Wallet}>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={stats.monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={168}>
+            <BarChart data={stats.monthly} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.25} vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 1000 ? v / 1000 + 'k' : v)} />
@@ -410,8 +410,8 @@ return (
 
         <Card title="Top Spenders" icon={Wallet}>
           {stats.topSpenders.length ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart layout="vertical" data={stats.topSpenders} margin={{ top: 4, right: 8, left: 6, bottom: 4 }}>
+            <ResponsiveContainer width="100%" height={168}>
+              <BarChart layout="vertical" data={stats.topSpenders} margin={{ top: 2, right: 8, left: 6, bottom: 2 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.2} horizontal={false} />
                 <XAxis type="number" hide />
                 <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
@@ -431,8 +431,8 @@ return (
 
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title="Recent Trips" icon={PlaneTakeoff}>
-          <div className="space-y-2">
-            {data.trips.slice(0, 6).map(function (t) {
+          <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
+            {data.trips.slice(0, 14).map(function (t) {
               return (
                 <div key={t.id} className="flex items-center justify-between text-sm py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
                   <div className="min-w-0">
@@ -455,8 +455,8 @@ return (
         </Card>
 
         <Card title="Recent Settlements" icon={ArrowRightLeft}>
-          <div className="space-y-2">
-            {data.settlements.slice(0, 6).map(function (s) {
+          <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
+            {data.settlements.slice(0, 14).map(function (s) {
               return (
                 <div key={s.id} className="flex items-center justify-between text-sm py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
                   <div className="min-w-0">

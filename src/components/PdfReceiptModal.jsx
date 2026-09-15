@@ -19,11 +19,13 @@ export default function PdfReceiptModal({
 }) {
   const [downloading, setDownloading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [error, setError] = useState(null);
 
   if (!isOpen) return null;
 
   const handleDownloadPdf = () => {
     setDownloading(true);
+    setError(null);
     try {
       const doc = generateTripPdfReceipt(
         trip,
@@ -39,7 +41,7 @@ export default function PdfReceiptModal({
       doc.save(filename);
     } catch (err) {
       console.error('PDF Generation Error:', err);
-      alert('Could not generate PDF. Please try again.');
+      setError('Could not generate the PDF. Please check the trip data and try again.');
     } finally {
       setDownloading(false);
     }
@@ -86,6 +88,12 @@ export default function PdfReceiptModal({
               </p>
             </div>
           </div>
+
+          {error && (
+            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold">
+              {error}
+            </div>
+          )}
 
           {/* Statement Quick Preview Box */}
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">

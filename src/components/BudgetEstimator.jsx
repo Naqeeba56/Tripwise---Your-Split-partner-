@@ -39,6 +39,34 @@ function useDebounce(value, delay = 400) {
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
 
+// Distance-based fare range (low – high per person round-trip) for the
+// active transport mode. Drives the "Est. ₹X – ₹Y" chip in the breakdown.
+const computeTransportRange = (mode, fareData, numT, days) => {
+  const perPerson = (arr, key) => (arr || []).map((c) => Number(c[key] || 0)).filter(Boolean);
+  try {
+    if (mode === 'train' || mode === 'bus' || mode === 'flight') {
+      const p = perPerson(fareData, 'returnPerPerson');
+      if (!p.length) return null;
+      return `₹${fmt(Math.min(...p))} – ₹${fmt(Math.max(...p))} / pp round-trip`;
+    }
+    if (mode === 'cab' || mode === 'road') {
+      const p = perPerson(fareData, 'perPersonReturn');
+      if (!p.length) return null;
+      return `₹${fmt(Math.min(...p))} – ₹${fmt(Math.max(...p))} / pp round-trip`;
+    }
+    if (mode === 'bike' && fareData && !Array.isArray(fareData)) {
+      return `₹${fmt(fareData.totalReturn || 0)} · group round-trip`;
+    }
+    if (mode === 'selfdrive' && fareData && fareData.carTypes) {
+      const t = fareData.carTypes.map((car) => (fareData.totalFixed || 0) + car.rentalPerDay * days);
+      return `₹${fmt(Math.min(...t))} – ₹${fmt(Math.max(...t))} · group round-trip`;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return null;
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // Format seconds → "Xh Ym"
 const fmtSecs = (s) => {
@@ -1038,7 +1066,7 @@ export default function BudgetEstimator({ onStartTripWithBudget }) {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {[
                       { emoji: '🏨', label: isDayTrip ? 'Accommodation (None)' : 'Accommodation', val: result.breakdown.stay, zero: isDayTrip },
-                      { emoji: '🚗', label: `Transport${routeData ? ` · ${routeData.distanceText}` : ''}`, val: result.breakdown.transport },
+                      { emoji: '🚗', label: `Transport${routeData ? ` · ${routeData.distanceText}` : ''} · ~${distKm} km`, val: result.breakdown.transport, range: computeTransportRange(travelMode, fareData, numT, days) },
                       { emoji: '🍔', label: 'Food & Dining', val: result.breakdown.food },
                       { emoji: '🎯', label: 'Activities', val: result.breakdown.activities },
                       { emoji: '🛡️', label: 'Buffer (10%)', val: result.breakdown.buffer, accent: true, span: true },
@@ -1048,6 +1076,11 @@ export default function BudgetEstimator({ onStartTripWithBudget }) {
                         <strong className={`text-sm ${item.zero ? 'text-emerald-500' : item.accent ? 'text-teal-600 dark:text-teal-400' : 'text-slate-800 dark:text-slate-200'}`}>
                           {item.zero ? '₹0 saved' : `₹${fmt(item.val)}`}
                         </strong>
+                        {item.range && (
+                          <span className="block text-[9px] text-teal-600 dark:text-teal-400 font-bold mt-1 leading-tight">
+                            Est. {item.range}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>

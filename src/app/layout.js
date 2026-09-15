@@ -107,7 +107,7 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased transition-colors duration-300">
+      <body className="min-h-screen app-canvas text-slate-800 dark:text-slate-100 antialiased transition-colors duration-300">
         {children}
       </body>
     </html>

@@ -65,6 +65,7 @@ export default function CommunityAnnouncements({
   const [announcements, setAnnouncements] = useState(INITIAL_ANNOUNCEMENTS);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTag, setSelectedTag] = useState('ALL');
+  const [copiedId, setCopiedId] = useState(null);
 
   // New announcement form state
   const [title, setTitle] = useState('');
@@ -243,12 +244,13 @@ export default function CommunityAnnouncements({
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(item.contact_info);
-                  alert(`Contact info copied: ${item.contact_info}`);
+                  setCopiedId(item.id);
+                  setTimeout(() => setCopiedId(null), 1800);
                 }}
                 className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
-                <span>Connect</span>
+                <span>{copiedId === item.id ? 'Copied!' : 'Connect'}</span>
               </button>
             </div>
           </motion.div>

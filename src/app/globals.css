@@ -6,6 +6,28 @@
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+/* Fine film-grain used by the footer's hand-made texture overlay */
+.footer-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* Skimming-paper effect for the mobile "back to top" chip */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-float-slow,
+  .animate-shimmer {
+    animation: none !important;
+  }
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -13,6 +35,23 @@ body {
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+}
+
+/* App surface canvas — a warm, classy off-white in light mode and a deep
+   inky slate in dark mode, so both read premium rather than harsh/bright. */
+.app-canvas {
+  background:
+    radial-gradient(120% 95% at 0% 0%, #ffffff 0%, #f6f4ef 48%, #efece4 88%, #ece9df 100%);
+}
+.dark .app-canvas {
+  background:
+    radial-gradient(120% 95% at 0% 0%, #111a2b 0%, #0b1220 55%, #070d16 88%, #050a12 100%);
+}
+
+/* Thin decorative tint band used behind the header/hero so the top of
+   the light page feels softly lit instead of flat white. */
+.app-top-tint {
+  background: linear-gradient(180deg, rgba(20, 184, 166, 0.06) 0%, rgba(255, 255, 255, 0) 240px);
 }
 
 /* Custom Sleek Scrollbar */

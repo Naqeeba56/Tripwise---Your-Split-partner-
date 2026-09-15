@@ -24,11 +24,14 @@ import {
   ShieldCheck,
   TrendingUp,
   Wallet,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ConfirmModal from '@/components/ConfirmModal';
+import Toast from '@/components/Toast';
 import ExpenseCard from '@/components/ExpenseCard';
 import ExpenseFeed from '@/components/ExpenseFeed';
 import BudgetTracker from '@/components/BudgetTracker';
@@ -69,6 +72,11 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showNewTripModal, setShowNewTripModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [confirmTripId, setConfirmTripId] = useState(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [successMsg, setSuccessMsg] = useState(null);
+
+  const notify = (message, tone = 'success') => setSuccessMsg({ message, tone });
 
   // User-scoped data state (Initialized strictly empty - ZERO static mock data)
   const [allTrips, setAllTrips] = useState([]);
@@ -460,18 +468,19 @@ export default function Home() {
     }
   };
 
-  // Delete Trip Handler
-  const handleDeleteTrip = async (tripIdToDelete) => {
+  // Delete Trip Handler — asks for confirmation via the app modal, then deletes.
+  const requestDeleteTrip = (tripIdToDelete) => {
     if (!userProfile?.id) return;
+    setConfirmTripId(tripIdToDelete);
+  };
 
-    // Confirm deletion
-    if (!window.confirm('Are you sure you want to delete this entire trip? This action cannot be undone.')) {
-      return;
-    }
+  const executeDeleteTrip = async () => {
+    const tripIdToDelete = confirmTripId;
+    if (!tripIdToDelete || !userProfile?.id) return;
 
     try {
       const success = await deleteTripInDb(tripIdToDelete, userProfile.id);
-      
+
       if (!success) {
         setAppError('Failed to delete trip. You may only delete trips you created.');
         return;
@@ -497,6 +506,8 @@ export default function Home() {
     } catch (err) {
       console.error('Error deleting trip:', err);
       setAppError('Error deleting trip. Please try again.');
+    } finally {
+      setConfirmTripId(null);
     }
   };
 
@@ -504,7 +515,7 @@ export default function Home() {
 
   return (
     <div className={darkMode ? 'dark' : ''}>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between transition-colors duration-300">
+      <div className="min-h-screen app-canvas text-slate-800 dark:text-slate-100 flex flex-col justify-between transition-colors duration-300">
         <div>
           {/* Main Header */}
           <Header
@@ -676,11 +687,7 @@ export default function Home() {
                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl px-3 py-3 sm:py-3 text-sm sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
                           />
 
-                          {appError && (
-                            <span className="text-red-500 text-xs font-bold mt-1.5 flex items-center gap-1">
-                              ⚠️ {appError}
-                            </span>
-                          )}
+                          {/* appError now surfaces as a floating toast (see bottom of page) */}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -807,7 +814,7 @@ export default function Home() {
                       handleSelectTrip(tripId);
                       setActiveTab('dashboard');
                     }}
-                    onDeleteTrip={handleDeleteTrip}
+                    onDeleteTrip={requestDeleteTrip}
                     onCreateTrip={() => setShowNewTripModal(true)}
                   />
                 </motion.div>
@@ -973,11 +980,12 @@ export default function Home() {
                       const link = `${window.location.origin}/trip/join/${currentTrip.invite_token || currentTrip.inviteToken || 'tripwise_invite'}`;
                       navigator.clipboard.writeText(link);
                       confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
-                      alert('Trip join link copied to clipboard!');
+                      setInviteCopied(true);
+                      setTimeout(() => setInviteCopied(false), 1800);
                     }}
                     className="bg-teal-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 hover:bg-teal-400 transition"
                   >
-                    Copy
+                    {inviteCopied ? 'Copied ✓' : 'Copy'}
                   </button>
                 </div>
 
@@ -992,6 +1000,19 @@ export default function Home() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Confirm Trip Delete Modal */}
+        <ConfirmModal
+          isOpen={!!confirmTripId}
+          onClose={() => setConfirmTripId(null)}
+          onConfirm={executeDeleteTrip}
+          title="Delete this trip?"
+          message={`This permanently deletes "${(currentTrip && String(currentTrip.id) === String(confirmTripId)) ? currentTrip.name : 'this trip'}", its expenses and member logs. This action cannot be undone.`}
+          confirmLabel="Delete Trip"
+          cancelLabel="Keep Trip"
+          tone="danger"
+          icon={Trash2}
+        />
       </div>
     </div>
   );

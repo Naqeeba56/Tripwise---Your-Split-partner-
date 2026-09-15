@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Camera, Plus, Check, Shield, Smartphone, Baby, PhoneCall, Trash2 } from 'lucide-react';
 import { compressToWebP } from '@/lib/imageUtils';
+import ConfirmModal from './ConfirmModal';
 
 export default function MembersTab({
   trip,
@@ -20,6 +21,13 @@ export default function MembersTab({
   const [newMemberQrCode, setNewMemberQrCode] = useState(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [error, setError] = useState(null);
+  const [memberToDelete, setMemberToDelete] = useState(null);
+
+  const confirmDeleteMember = () => {
+    if (!memberToDelete) return;
+    if (onDeleteMember) onDeleteMember(memberToDelete.id, memberToDelete.name);
+    setMemberToDelete(null);
+  };
 
   const existingPrimaryMembers = trip.members?.filter((m) => {
     const parent = typeof m === 'object' ? (m.parentMemberName || m.parent_member_name) : null;
@@ -106,7 +114,7 @@ export default function MembersTab({
         </h2>
 
         {/* Member Roster List */}
-        <div className="space-y-2.5 sm:space-y-3 mb-6">
+        <div className="space-y-2.5 sm:space-y-3 max-h-[420px] overflow-y-auto no-scrollbar">
           {trip.members?.map((m, idx) => {
             const name = typeof m === 'string' ? m : m.name;
             const avatar = typeof m === 'object' ? (m.avatar_url || m.avatar) : null;
@@ -181,10 +189,8 @@ export default function MembersTab({
                   {!isCreator && onDeleteMember && (
                     <button
                       onClick={() => {
-                        if (window.confirm(`Delete ${name} from this trip?`)) {
-                          const memberId = typeof m === 'object' ? m.id : null;
-                          if (memberId) onDeleteMember(memberId, name);
-                        }
+                        const memberId = typeof m === 'object' ? m.id : null;
+                        if (memberId) setMemberToDelete({ id: memberId, name });
                       }}
                       className="p-1.5 hover:bg-rose-500/15 rounded-lg transition-colors text-rose-500 hover:text-rose-600 dark:hover:text-rose-400"
                       title={`Remove ${name}`}
@@ -330,6 +336,18 @@ export default function MembersTab({
           </div>
         </form>
       </div>
+
+      {/* Delete Member Confirmation — in-app modal */}
+      <ConfirmModal
+        isOpen={!!memberToDelete}
+        onClose={() => setMemberToDelete(null)}
+        onConfirm={confirmDeleteMember}
+        title="Remove member?"
+        message={`Remove ${memberToDelete?.name || 'this member'} from this trip? They'll no longer be part of the sharing pool.`}
+        confirmLabel="Remove Member"
+        cancelLabel="Cancel"
+        tone="danger"
+      />
     </div>
   );
 }

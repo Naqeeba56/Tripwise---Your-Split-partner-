@@ -8,6 +8,10 @@ import { attach3DTilt } from '@/lib/animeAnimations';
 export default function ExpenseCard({
   expense,
   onSettleExpense,
+  onEditExpense,
+  onDeleteExpense,
+  currentUserName = '',
+  tripCreatorName = '',
   getAvatarForMember,
 }) {
   const [balance, setBalance] = useState(expense.amount);
@@ -64,7 +68,18 @@ export default function ExpenseCard({
     CATEGORIES.find((c) => c.id === expense.category) || CATEGORIES[0];
   const CatIcon = catObj.icon;
   const paidBy = expense.paidBy || expense.payer || 'Unknown';
-  const paidByAvatar = getAvatarForMember ? getAvatarForMember(paidBy) : null;
+  // Only treat it as "paid by multiple" when 2+ people actually split it.
+  const payers =
+    Array.isArray(expense.payers) && expense.payers.length > 1
+      ? expense.payers
+      : null;
+  const payerNames = payers ? payers.map((p) => p.name) : [paidBy];
+
+  // Only the payer(s) of this expense or the trip creator may edit / delete it.
+  const canManage =
+    !!currentUserName &&
+    (currentUserName === tripCreatorName ||
+      payerNames.some((n) => currentUserName === n));
 
   return (
     <div
@@ -85,25 +100,22 @@ export default function ExpenseCard({
             <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
               {expense.title}
             </h3>
-            <div className="flex items-center gap-1.5 mt-0.5 truncate">
-              <span className="text-[11px] sm:text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">
                 Paid by
               </span>
-              {paidByAvatar ? (
-                <img
-                  src={paidByAvatar}
-                  alt={paidBy}
-                  loading="lazy"
-                  className="w-4 h-4 rounded-full object-cover flex-shrink-0"
-                />
+              {payers ? (
+                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+                  {payers.map((p) => `${p.name} ${p.amount && p.amount !== expense.amount ? '₹' + Number(p.amount).toLocaleString('en-IN') : ''}`).join(' · ')}
+                </span>
               ) : (
-                <div className="w-4 h-4 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-medium text-[9px] flex items-center justify-center flex-shrink-0">
-                  {paidBy[0]}
-                </div>
+                <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-300 truncate flex items-center gap-1">
+                  {getAvatarForMember ? (
+                    <img src={getAvatarForMember(paidBy)} alt={paidBy} loading="lazy" className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
+                  ) : null}
+                  {paidBy}
+                </span>
               )}
-              <span className="text-[11px] sm:text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
-                {paidBy}
-              </span>
             </div>
             {expense.excludedMembers && expense.excludedMembers.length > 0 && (
               <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate">
@@ -128,15 +140,37 @@ export default function ExpenseCard({
         </div>
       )}
 
-      {!isSettled && (
-        <div className="mt-3.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex justify-end">
-          <button
-            type="button"
-            className="settle-btn text-[11px] sm:text-xs font-semibold px-4 py-2 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-sm transition-all active:scale-95"
-            onClick={() => handleSettlement(balance)}
-          >
-            Settle Full Amount
-          </button>
+      {(!isSettled || canManage) && (
+        <div className="mt-3.5 pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-end gap-2 flex-wrap">
+          {canManage && (
+            <>
+              <button
+                type="button"
+                onClick={() => onEditExpense && onEditExpense(expense)}
+                className="text-[11px] sm:text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all active:scale-95 inline-flex items-center gap-1"
+                aria-label="Edit expense"
+              >
+                ✏️ Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeleteExpense && onDeleteExpense(expense.id)}
+                className="text-[11px] sm:text-xs font-semibold px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 transition-all active:scale-95 inline-flex items-center gap-1"
+                aria-label="Delete expense"
+              >
+                🗑️ Delete
+              </button>
+            </>
+          )}
+          {!isSettled && (
+            <button
+              type="button"
+              className="settle-btn text-[11px] sm:text-xs font-semibold px-4 py-2 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-sm transition-all active:scale-95"
+              onClick={() => handleSettlement(balance)}
+            >
+              Settle Full Amount
+            </button>
+          )}
         </div>
       )}
     </div>

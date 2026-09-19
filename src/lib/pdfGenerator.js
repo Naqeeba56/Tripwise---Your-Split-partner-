@@ -141,9 +141,13 @@ export const generateTripPdfReceipt = (
 
   const memberRows = (trip.members || []).map((m) => {
     const memberName = typeof m === 'string' ? m : m.name;
-    const paidTotal = expenses
-      .filter((e) => (e.paidBy || e.payer) === memberName)
-      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const paidTotal = expenses.reduce((sum, e) => {
+      const eps = Array.isArray(e.payers) && e.payers.length
+        ? e.payers
+        : [{ name: e.paidBy || e.payer || 'Unknown', amount: Number(e.amount || 0) }];
+      const hit = eps.find((p) => p.name === memberName);
+      return sum + (hit ? Number(hit.amount || 0) : 0);
+    }, 0);
     const balance = netBalances[memberName] || 0;
     const rounded = Math.round(balance);
     const statusText = rounded > 0 ? `+ Rs. ${rounded} (Receives)` : rounded < 0 ? `- Rs. ${Math.abs(rounded)} (Owes)` : 'Settled (Rs. 0)';
@@ -217,13 +221,18 @@ export const generateTripPdfReceipt = (
   doc.setTextColor(...darkColor);
   doc.text('3. Detailed Expense Ledger', 14, yPos);
 
-  const expenseRows = expenses.map((e, idx) => [
-    `#${idx + 1}`,
-    e.title,
-    e.category || 'General',
-    e.paidBy || e.payer || 'Unknown',
-    `Rs. ${Number(e.amount).toLocaleString('en-IN')}`,
-  ]);
+  const expenseRows = expenses.map((e, idx) => {
+    const paidByLabel = Array.isArray(e.payers) && e.payers.length
+      ? e.payers.map((p) => `${p.name} (₹${Number(p.amount || 0).toLocaleString('en-IN')})`).join(', ')
+      : (e.paidBy || e.payer || 'Unknown');
+    return [
+      `#${idx + 1}`,
+      e.title,
+      e.category || 'General',
+      paidByLabel,
+      `Rs. ${Number(e.amount).toLocaleString('en-IN')}`,
+    ];
+  });
 
   autoTable(doc, {
     startY: yPos + 3,

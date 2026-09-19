@@ -4,7 +4,12 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 export async function GET(request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') || '/';
+  // After OAuth/OTP, land in the app (which now lives at /app).
+  let next = requestUrl.searchParams.get('next') || '/app';
+  // Guard against open redirects — only allow same-origin relative paths.
+  if (!next.startsWith('/') || next.startsWith('//')) {
+    next = '/app';
+  }
 
   if (code && isSupabaseConfigured()) {
     try {

@@ -4,6 +4,21 @@
 
 :root {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fraunces', 'Plus Jakarta Sans', Georgia, serif;
+}
+
+/* Display type for brand wordmarks & feature headlines */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: 'tabular-nums' off;
+}
+
+/* Data / currency legibility — keep numbers tabular & stable */
+.font-mono-stats {
+  font-variant-numeric: 'tabular-nums' lnum;
+  letter-spacing: -0.01em;
 }
 
 html {
@@ -30,6 +45,8 @@ html {
 
 body {
   font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;

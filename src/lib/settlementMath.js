@@ -38,8 +38,19 @@ export const calculateNetBalances = (members = [], expenses = []) => {
       }
     });
 
-    // Credit full amount to payer
-    if (netBalances[payer] !== undefined) {
+    // "Paid by multiple" — each payer is credited their individual amount.
+    // Backward compatible: no payers array → single payer gets the full amount.
+    if (Array.isArray(exp.payers) && exp.payers.length > 0) {
+      exp.payers.forEach((p) => {
+        const amountPaid = Number(p.amount || 0);
+        if (amountPaid <= 0) return;
+        if (netBalances[p.name] !== undefined) {
+          netBalances[p.name] += amountPaid;
+        } else {
+          netBalances[p.name] = amountPaid;
+        }
+      });
+    } else if (netBalances[payer] !== undefined) {
       netBalances[payer] += amt;
     } else {
       netBalances[payer] = amt;

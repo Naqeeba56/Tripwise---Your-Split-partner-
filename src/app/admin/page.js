@@ -68,7 +68,7 @@ export default function AdminPage() {
               </span>
             </p>
             <a
-              href="/"
+              href="/app"
               className="inline-flex items-center gap-1.5 bg-teal-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-teal-400 transition"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -94,7 +94,7 @@ export default function AdminPage() {
     <div className={darkMode ? 'dark' : ''}>
       <div className="min-h-screen app-canvas text-slate-800 dark:text-slate-100 transition-colors duration-300">
         <header className="sticky top-0 z-40 backdrop-blur-2xl bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 rounded-2xl text-slate-950 shadow-lg shadow-teal-500/20">
                 <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2]" />
@@ -126,7 +126,7 @@ export default function AdminPage() {
               </button>
 
               <a
-                href="/"
+                href="/app"
                 className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-3.5 py-2 rounded-xl text-xs font-semibold hover:border-teal-500/40 transition"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -136,7 +136,7 @@ export default function AdminPage() {
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
           <AdminDashboard user={user} />
         </main>
       </div>

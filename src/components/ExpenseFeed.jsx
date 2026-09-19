@@ -8,6 +8,10 @@ import { CATEGORIES } from './GlassCategoryDropdown';
 export default function ExpenseFeed({
   expenses = [],
   onSettleExpense,
+  onEditExpense,
+  onDeleteExpense,
+  currentUserName = '',
+  tripCreatorName = '',
   getAvatarForMember,
 }) {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -107,6 +111,10 @@ export default function ExpenseFeed({
               key={exp.id}
               expense={exp}
               onSettleExpense={onSettleExpense}
+              onEditExpense={onEditExpense}
+              onDeleteExpense={onDeleteExpense}
+              currentUserName={currentUserName}
+              tripCreatorName={tripCreatorName}
               getAvatarForMember={getAvatarForMember}
             />
           ))

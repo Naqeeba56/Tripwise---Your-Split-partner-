@@ -1,4 +1,4 @@
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Plus_Jakarta_Sans, Fraunces } from 'next/font/google';
 import './globals.css';
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -6,6 +6,15 @@ const jakartaSans = Plus_Jakarta_Sans({
   weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
   variable: '--font-sans',
+});
+
+// Premium display face for brand wordmarks & hero headlines — pairs with
+// Plus Jakarta Sans (UI + data). High-contrast, characterful, "made" feel.
+const displayFont = Fraunces({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-display',
 });
 
 export const viewport = {
@@ -100,7 +109,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={jakartaSans.variable} suppressHydrationWarning>
+    <html lang="en" className={`${jakartaSans.variable} ${displayFont.variable}`} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"

@@ -134,7 +134,7 @@ export default function JoinTripPage() {
     }
 
     setShowJoinModal(false);
-    router.push('/');
+    router.push('/app');
   };
 
   if (loading) {

@@ -33,7 +33,7 @@ export const signInWithGoogle = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?next=/app`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
@@ -56,7 +56,7 @@ export const signInWithOtp = async (email) => {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback?next=/app`,
     },
   });
 

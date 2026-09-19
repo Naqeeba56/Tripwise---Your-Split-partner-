@@ -10,16 +10,22 @@ export default function sitemap() {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/community`,
+      url: `${baseUrl}/app`,
       lastModified: currentDate,
       changeFrequency: 'daily',
-      priority: 0.8,
+      priority: 0.9,
     },
     {
-      url: `${baseUrl}/estimator`,
+      url: `${baseUrl}/about`,
       lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.8,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.4,
     },
   ];
 }

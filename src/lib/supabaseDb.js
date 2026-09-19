@@ -308,6 +308,7 @@ export const fetchTripExpenses = async (tripId, userId) => {
           title: e.title,
           amount: Number(e.amount),
           paidBy: e.paid_by,
+          payers: Array.isArray(e.payers) && e.payers.length ? e.payers : null,
           category: e.category,
           excludedMembers: Array.isArray(e.excluded_members) ? e.excluded_members : [],
           date: e.date || e.created_at,
@@ -341,6 +342,7 @@ export const createExpenseInDb = async (expenseData, userId) => {
     title: expenseData.title,
     amount: Number(expenseData.amount),
     paidBy: expenseData.paidBy,
+    payers: expenseData.payers || null,
     category: expenseData.category || 'Food',
     excludedMembers: expenseData.excludedMembers || [],
     date: new Date().toISOString(),
@@ -355,13 +357,31 @@ export const createExpenseInDb = async (expenseData, userId) => {
           title: newExp.title,
           amount: newExp.amount,
           paid_by: newExp.paidBy,
+          payers: newExp.payers,
           category: newExp.category,
           excluded_members: newExp.excludedMembers,
         })
         .select()
         .single();
 
-      if (!error && data) {
+      // If the DB doesn't have a `payers` column yet, retry without it.
+      if (error && error.message && /payers/i.test(`${error.message} ${error.details || ''}`)) {
+        const retry = await supabase
+          .from('expenses')
+          .insert({
+            trip_id: expenseData.tripId,
+            title: newExp.title,
+            amount: newExp.amount,
+            paid_by: newExp.paidBy,
+            category: newExp.category,
+            excluded_members: newExp.excludedMembers,
+          })
+          .select()
+          .single();
+        if (!retry.error && retry.data) {
+          newExp.id = retry.data.id;
+        }
+      } else if (!error && data) {
         newExp.id = data.id;
       }
     } catch (err) {
@@ -404,6 +424,38 @@ export const deleteExpenseInDb = async (expenseId, tripId, userId) => {
       const parsed = JSON.parse(existing);
       const filtered = parsed.filter((e) => String(e.id) !== String(expenseId));
       safeSetItem(key, filtered);
+    }
+  }
+};
+
+/**
+ * Update / edit an expense (title, amount, category, paid-by, payers, exclusions)
+ * scoped by trip_id so users can only edit expenses of their own trip.
+ */
+export const updateExpenseInDb = async (expenseId, tripId, fields = {}, userId) => {
+  if (isSupabaseConfigured() && isValidUuid(expenseId) && isValidUuid(tripId)) {
+    try {
+      const payload = {
+        ...(fields.title !== undefined ? { title: fields.title } : {}),
+        ...(fields.amount !== undefined ? { amount: Number(fields.amount) } : {}),
+        ...(fields.paidBy !== undefined ? { paid_by: fields.paidBy } : {}),
+        ...(fields.payers !== undefined ? { payers: fields.payers } : {}),
+        ...(fields.category !== undefined ? { category: fields.category } : {}),
+        ...(fields.excludedMembers !== undefined ? { excluded_members: fields.excludedMembers } : {}),
+      };
+      await supabase.from('expenses').update(payload).eq('id', expenseId).eq('trip_id', tripId);
+    } catch (err) {
+      console.warn('Supabase expense update error:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined' && userId && tripId) {
+    const key = getUserStorageKey(userId, `expenses_${tripId}`);
+    const existing = safeGetItem(key);
+    if (existing) {
+      const parsed = JSON.parse(existing);
+      const updated = parsed.map((e) => (String(e.id) === String(expenseId) ? { ...e, ...fields } : e));
+      safeSetItem(key, updated);
     }
   }
 };

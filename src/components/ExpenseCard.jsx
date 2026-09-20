@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { CATEGORIES } from './GlassCategoryDropdown';
 import { attach3DTilt } from '@/lib/animeAnimations';
+import { Pencil, Trash2 } from 'lucide-react';
 
 export default function ExpenseCard({
   expense,
@@ -147,29 +148,20 @@ export default function ExpenseCard({
               <button
                 type="button"
                 onClick={() => onEditExpense && onEditExpense(expense)}
-                className="text-[11px] sm:text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all active:scale-95 inline-flex items-center gap-1"
+                className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all active:scale-95 inline-flex items-center gap-1.5"
                 aria-label="Edit expense"
               >
-                ✏️ Edit
+                <Pencil className="w-3.5 h-3.5" /> Edit
               </button>
               <button
                 type="button"
                 onClick={() => onDeleteExpense && onDeleteExpense(expense.id)}
-                className="text-[11px] sm:text-xs font-semibold px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 transition-all active:scale-95 inline-flex items-center gap-1"
+                className="text-xs font-semibold px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 transition-all active:scale-95 inline-flex items-center gap-1.5"
                 aria-label="Delete expense"
               >
-                🗑️ Delete
+                <Trash2 className="w-3.5 h-3.5" /> Delete
               </button>
             </>
-          )}
-          {!isSettled && (
-            <button
-              type="button"
-              className="settle-btn text-[11px] sm:text-xs font-semibold px-4 py-2 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-sm transition-all active:scale-95"
-              onClick={() => handleSettlement(balance)}
-            >
-              Settle Full Amount
-            </button>
           )}
         </div>
       )}

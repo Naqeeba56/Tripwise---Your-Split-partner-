@@ -194,29 +194,14 @@ export default function UpiPaymentModal({
 
           {activeView === 'qr' ? (
             <>
-              {/* QR Code display — Personal custom uploaded QR or generated standard upi:// pay QR */}
-              {creditorMember?.qr_code_url || creditorMember?.qr_code || creditorMember?.qrCode ? (
-                <div className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-950 rounded-2xl border border-teal-500/40 mb-4 shadow-sm">
-                  <img
-                    src={creditorMember.qr_code_url || creditorMember.qr_code || creditorMember.qrCode}
-                    alt={`${payeeName}'s Custom UPI QR`}
-                    className="w-44 h-44 object-contain rounded-lg shadow-inner"
-                  />
-                  <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold mt-1.5 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-teal-500" />
-                    Personal QR Code uploaded by {payeeName}
+              {qrDataUrl && (
+                <div className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 mb-4">
+                  <img src={qrDataUrl} alt="Dynamic UPI QR Code" className="w-40 h-40 rounded-lg shadow-inner" />
+                  <span className="text-[10px] text-slate-400 font-bold mt-1.5 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    Dynamic QR with exact amount for {validPayeeAddress}
                   </span>
                 </div>
-              ) : (
-                qrDataUrl && (
-                  <div className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 mb-4">
-                    <img src={qrDataUrl} alt="UPI QR Code" className="w-40 h-40 rounded-lg shadow-inner" />
-                    <span className="text-[10px] text-slate-400 font-bold mt-1.5 flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                      Standard QR Code generated for {validPayeeAddress}
-                    </span>
-                  </div>
-                )
               )}
 
               {/* Direct App Launch Links */}

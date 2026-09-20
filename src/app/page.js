@@ -14,13 +14,13 @@ import {
   Check,
   Star,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
   { label: 'How it works', href: '#how' },
   { label: 'Showcase', href: '#showcase' },
-  { label: 'Loved by', href: '#loved' },
-  { label: 'FAQ', href: '#faq' },
+  { label: 'Testimonials', href: '#loved' },
 ];
 
 const HERO_ART = {
@@ -30,211 +30,220 @@ const HERO_ART = {
 
 export default function Home() {
   return (
-    <main className="min-h-screen app-canvas text-slate-800 dark:text-slate-100 antialiased">
-      <header className="sticky top-0 z-40 backdrop-blur-2xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/70 dark:border-slate-800/60 shadow-sm">
-        <div className="w-full px-4 sm:px-6 lg:px-10 py-3 flex items-center justify-between gap-3">
-          <a href="#top" className="flex items-center gap-2">
-            <span className="bg-brand-gradient p-2 rounded-xl text-slate-950 shadow-brand-glow"><HandCoins className="w-5 h-5" /></span>
-            <span className="font-display text-xl bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">Tripwise</span>
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased selection:bg-teal-500/30 selection:text-teal-900 dark:selection:text-teal-100">
+      <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-white/70 dark:bg-slate-950/70 border-b border-slate-200/50 dark:border-slate-800/50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <a href="#top" className="flex items-center gap-2 group">
+            <span className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 rounded-xl text-slate-950 shadow-lg shadow-teal-500/20 group-hover:shadow-teal-500/40 transition">
+              <HandCoins className="w-5 h-5 stroke-[2]" />
+            </span>
+            <span className="font-bold text-xl tracking-tight">Tripwise</span>
           </a>
-          <nav className="hidden md:flex items-center gap-5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-200">
-            {NAV_LINKS.map((l) => <a key={l.href} href={l.href} className="transition-colors">{l.label}</a>)}
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
+            {NAV_LINKS.map((l) => (
+              <a key={l.href} href={l.href} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                {l.label}
+              </a>
+            ))}
           </nav>
-          <a href="/app" className="group inline-flex items-center gap-1.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold px-4 py-2.5 text-xs transition-all active:scale-95 shadow-brand-glow">
-            Open App <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+          <a href="/app" className="group inline-flex items-center gap-2 rounded-2xl bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 font-semibold px-5 py-2.5 text-sm transition-all active:scale-95 shadow-md">
+            Launch App <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </a>
         </div>
       </header>
 
-      <div id="top" className="w-full px-4 sm:px-6 lg:px-10">
-        <section className="pt-10 sm:pt-16 pb-12 sm:pb-20 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          <div className="min-w-0">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/30 bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-200 px-3 py-1 text-[11px] font-semibold">
-              <Sparkles className="w-3.5 h-3.5" /> Group money, but make it fun
-            </span>
-            <h1 className="mt-4 text-3xl sm:text-5xl font-display tracking-tight text-slate-900 dark:text-slate-50">
-              Split the trip, <span className="bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">settle in a tap.</span>
+      <div id="top" className="max-w-6xl mx-auto px-6 pt-32 pb-16">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center min-h-[60vh]">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="max-w-xl"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/10 text-teal-700 dark:text-teal-300 px-3 py-1.5 text-xs font-semibold mb-6">
+              <Sparkles className="w-3.5 h-3.5" /> 
+              <span>Group travel, minus the money drama</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+              Split the trip,<br />
+              <span className="bg-gradient-to-r from-teal-500 to-emerald-400 bg-clip-text text-transparent">settle in a tap.</span>
             </h1>
-            <p className="mt-3 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-              Tripwise handles the dull math of group travel — splitting, debt-minimizing and instant UPI settlement — so you're free to argue about chai spots, not who paid for the villa.
+            <p className="mt-6 text-base sm:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-md">
+              Tripwise handles the complex math of group expenses — minimizing debts and generating instant UPI settlements — so you can focus on the journey.
             </p>
-            <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <a href="/app" className="inline-flex items-center gap-2 rounded-2xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold px-6 py-3.5 text-sm transition-all active:scale-95 shadow-brand-glow">
-                Start splitting — it's free <ArrowRight className="w-4 h-4" />
+            <div className="mt-8 flex flex-col sm:flex-row gap-4">
+              <a href="/app" className="inline-flex justify-center items-center gap-2 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-7 py-3.5 text-sm transition-all active:scale-95 shadow-lg shadow-teal-500/25">
+                Start splitting <ArrowRight className="w-4 h-4" />
               </a>
-              <a href="#how" className="inline-flex items-center gap-2 rounded-2xl bg-white/70 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold px-6 py-3.5 text-sm transition active:scale-95">
+              <a href="#how" className="inline-flex justify-center items-center gap-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold px-7 py-3.5 text-sm transition active:scale-95">
                 See how it works
               </a>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="relative group">
-            <div aria-hidden="true" className="absolute -inset-4 rounded-[2rem] bg-brand-soft opacity-80" />
-            <img src={HERO_ART.a} alt="Trip screen" className="w-full h-72 sm:h-96 object-cover rounded-3xl shadow-soft-lift" />
-            <img src={HERO_ART.b} alt="Budget screen" className="absolute -bottom-8 -left-6 w-2/5 rounded-2xl object-cover border border-white/40 shadow-xl" />
-            <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-emerald-500/90 text-white px-3 py-1 text-[11px] font-bold shadow-md">
-              <Check className="w-3.5 h-3.5" /> Fully settled
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="relative lg:ml-auto w-full max-w-md"
+          >
+            <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/20 to-emerald-500/20 blur-3xl rounded-[3rem]" />
+            <div className="relative rounded-3xl overflow-hidden border-4 border-white dark:border-slate-800 shadow-2xl">
+              <img src={HERO_ART.a} alt="Trip Dashboard" className="w-full h-80 object-cover" />
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-900/90 to-transparent p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-bold text-lg">Goa Getaway</p>
+                    <p className="text-teal-400 text-sm font-medium">₹12,450 settled</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-teal-500 flex items-center justify-center text-slate-950 shadow-lg">
+                    <Check className="w-5 h-5 stroke-[3]" />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+            
+            {/* Floating Element */}
+            <motion.div 
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -bottom-6 -left-8 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 flex items-center gap-4"
+            >
+              <div className="bg-emerald-500/10 p-3 rounded-xl text-emerald-500">
+                <Wallet className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Sarah paid you</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">₹2,400 via UPI</p>
+              </div>
+            </motion.div>
+          </motion.div>
         </section>
 
-        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 rounded-2xl border border-slate-200/70 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/70 backdrop-blur p-5 sm:p-6 mb-14 sm:mb-20">
+        {/* Stats */}
+        <section className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { k: '₹1.2 Cr+', v: 'settled via UPI' },
-            { k: '50k+', v: 'trips split' },
-            { k: '98%', v: 'settle < 2 min' },
-            { k: '4.9★', v: 'avg. rating' },
-          ].map((s) => (
-            <div key={s.v} className="text-center">
-              <div className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-50">{s.k}</div>
-              <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5">{s.v}</div>
-            </div>
+            { k: '₹1.2 Cr+', v: 'Settled via UPI' },
+            { k: '50k+', v: 'Trips Split' },
+            { k: '98%', v: 'Settle < 2 min' },
+            { k: '4.9/5', v: 'User Rating' },
+          ].map((s, i) => (
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              key={s.v} 
+              className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm text-center"
+            >
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-1">{s.k}</div>
+              <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">{s.v}</div>
+            </motion.div>
           ))}
         </section>
 
         {/* Features */}
-        <section id="features" className="mb-14 sm:mb-20">
-          <h2 className="text-2xl sm:text-4xl font-display tracking-tight text-slate-900 dark:text-slate-50 text-center">
-            Everything, <span className="bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">behind one trip.</span>
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 text-center mt-2 max-w-xl mx-auto">
-            Built for how groups actually travel — split fast, settle faster, argue never.
-          </p>
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <section id="features" className="mt-32">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+              Powerful tools, beautifully simple.
+            </h2>
+            <p className="mt-4 text-slate-600 dark:text-slate-400">
+              Everything you need to plan, track, and settle group expenses without the spreadsheet headache.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: ArrowRightLeft, title: 'Smart Splitting', tone: 'text-teal-500', blurb: 'Debt-minimized math settles everyone in the fewest transactions. No “who owes whom?” spirals.' },
-              { icon: Wallet, title: 'Instant UPI Settlement', tone: 'text-emerald-500', blurb: 'Tap payment and get a ready GPay / PhonePe / BHIM deep-link with the exact amount & UPI ID.' },
-              { icon: Compass, title: 'AI Budget Estimator', tone: 'text-violet-500', blurb: 'Distance-aware fare ranges for train, bus, flight, cab & bike — plus curated stays and day plans.' },
-              { icon: Receipt, title: 'Auto Receipts & PDF', tone: 'text-amber-500', blurb: 'One-tap branded settlement statement, exportable the moment everyone is settled.' },
-              { icon: ShieldCheck, title: 'Budget Guardrails', tone: 'text-rose-500', blurb: 'Daily & per-expense caps with glow alerts so a great trip never becomes a money surprise.' },
-              { icon: Megaphone, title: 'Travel Community', tone: 'text-sky-500', blurb: 'Find co-travelers for treks, villas and road trips, or post your own next adventure.' },
-            ].map((f) => {
+              { icon: ArrowRightLeft, title: 'Smart Splitting', blurb: 'Advanced algorithms minimize total transactions between friends automatically.' },
+              { icon: Wallet, title: '1-Tap UPI Settlement', blurb: 'Generates direct payment links for GPay/PhonePe with pre-filled exact amounts.' },
+              { icon: Compass, title: 'AI Budget Planner', blurb: 'Get accurate travel cost estimates for flights, trains, and stays before you go.' },
+              { icon: Receipt, title: 'Exportable Reports', blurb: 'Download clean PDF summaries of all trip expenses and settlements.' },
+              { icon: ShieldCheck, title: 'Budget Guardrails', blurb: 'Set daily spending limits and get gentle warnings before you overspend.' },
+              { icon: Megaphone, title: 'Community Board', blurb: 'Find like-minded travelers for your next big adventure or road trip.' },
+            ].map((f, i) => {
               const Icon = f.icon;
               return (
-                <div key={f.title} className="p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/80 backdrop-blur shadow-soft-lift">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <Icon className={`w-5 h-5 ${f.tone}`} />
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  key={f.title} 
+                  className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-6 group-hover:scale-110 transition-transform">
+                    <Icon className="w-6 h-6 stroke-[2]" />
                   </div>
-                  <h3 className="mt-3 text-sm font-extrabold text-slate-900 dark:text-slate-100">{f.title}</h3>
-                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{f.blurb}</p>
-                </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{f.title}</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{f.blurb}</p>
+                </motion.div>
               );
             })}
           </div>
         </section>
-{/* How it works */}
-        <section id="how" className="mb-14 sm:mb-20">
-          <h2 className="text-2xl sm:text-4xl font-display tracking-tight text-slate-900 dark:text-slate-50 text-center">
-            Three steps to <span className="bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">serene splits.</span>
-          </h2>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              { n: '01', title: 'Create a trip', desc: 'Name it, drop a cover, invite friends with a shareable link.' },
-              { n: '02', title: 'Log expenses together', desc: 'Snap an amount, pick who paid, exclude who wasn’t there.' },
-              { n: '03', title: 'Settle in one tap', desc: 'Watch debts minimize, then pay the exact amount via UPI.' },
-            ].map((s) => (
-              <div key={s.n} className="relative p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/80 backdrop-blur shadow-soft-lift">
-                <span className="font-display text-xl text-brand-600 dark:text-brand-400 absolute top-4 right-4">{s.n}</span>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">{s.title}</h3>
-                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
 
-        {/* Showcase */}
-        <section id="showcase" className="mb-14 sm:mb-20">
-          <h2 className="text-2xl sm:text-4xl font-display tracking-tight text-slate-900 dark:text-slate-50 text-center">
-            One app, <span className="bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">every screen.</span>
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 text-center mt-2 max-w-lg mx-auto">
-            A taste of the real product — right here on your screen before you even sign in.
-          </p>
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {[
-              { img: HERO_ART.a, cap: 'Expense feed — log & split in seconds', tag: 'Split' },
-              { img: HERO_ART.b, cap: 'AI budget — distance-aware fare ranges', tag: 'Estimate' },
-              { img: HERO_ART.a, cap: 'Settlements — minimal transfers, one tap UPI', tag: 'Settle' },
-            ].map((c) => (
-              <figure key={c.cap} className="group rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800/60 shadow-soft-lift">
-                <img src={c.img} alt={c.cap} className="w-full h-48 object-cover group-hover:scale-105 transition duration-700" />
-                <figcaption className="p-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur flex items-center justify-between gap-2">
-                  <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{c.cap}</span>
-                  <span className="shrink-0 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-300 px-2 py-0.5 text-[9px] font-bold">{c.tag}</span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </section>
+        {/* How it works */}
+        <section id="how" className="mt-32">
+          <div className="bg-slate-900 rounded-[3rem] p-8 md:p-16 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/20 blur-[100px] rounded-full pointer-events-none" />
+            
+            <div className="relative z-10 text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4">
+                How Tripwise works
+              </h2>
+              <p className="text-slate-400 max-w-xl mx-auto">
+                Three simple steps from trip creation to everyone being fully settled up.
+              </p>
+            </div>
 
-        {/* Loved by */}
-        <section id="loved" className="mb-14 sm:mb-20">
-          <h2 className="text-2xl sm:text-4xl font-display tracking-tight text-slate-900 dark:text-slate-50 text-center">
-            Loved by <span className="bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">actual groups.</span>
-          </h2>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              { q: 'We split a 12-day Spiti roadtrip between six people and the settlement took under two minutes. Actual magic.', who: 'Riya & squad', meta: 'Goa – Spiti roadtrip' },
-              { q: 'The AI estimator nailed our Goa budget within ₹500. The fare ranges per mode are so clever.', who: 'Aman', meta: 'Budget planner' },
-              { q: 'No more “you owe me” texts. The UPI deep-links alone are worth it.', who: 'Priya', meta: 'Frequent trekker' },
-            ].map((t) => (
-              <div key={t.who} className="p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/80 backdrop-blur shadow-soft-lift">
-                <div className="flex gap-0.5 text-amber-400">
-                  {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="w-3.5 h-3.5 fill-current" />)}
+            <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                { n: '1', title: 'Create & Invite', desc: 'Set up a trip instantly and share the invite link with your crew.' },
+                { n: '2', title: 'Log Expenses', desc: 'Add costs as you go. Split equally or adjust for specific people.' },
+                { n: '3', title: 'Settle Instantly', desc: 'Review optimized balances and pay exactly what you owe via UPI.' },
+              ].map((s, i) => (
+                <div key={s.n} className="text-center">
+                  <div className="w-16 h-16 mx-auto bg-slate-800 border border-slate-700 text-teal-400 rounded-full flex items-center justify-center text-2xl font-bold mb-6">
+                    {s.n}
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">{s.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">{s.desc}</p>
                 </div>
-                <p className="mt-2.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">“{t.q}”</p>
-                <div className="mt-3 text-[11px] font-bold text-slate-800 dark:text-slate-200">{t.who}</div>
-                <div className="text-[10px] text-slate-400">{t.meta}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section id="faq" className="mb-14 sm:mb-20 max-w-3xl mx-auto">
-          <h2 className="text-2xl sm:text-4xl font-display tracking-tight text-slate-900 dark:text-slate-50 text-center">
-            Fair <span className="bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">questions.</span>
-          </h2>
-          <div className="mt-8 space-y-3">
-            {[
-              { q: 'Is Tripwise free?', a: 'Yes. Creating trips, splitting expenses and estimating budgets are free. We plan optional premium insights later.' },
-              { q: 'How does my money move?', a: 'We never touch your money. Tripwise only builds deep-links into your own GPay/PhonePe/BHIM — you approve every payment.' },
-              { q: 'Do I need an account?', a: 'You can explore without one. To create trips and track settlements you sign in with Google or a magic email link.' },
-              { q: 'Does the PDF work when not everyone has paid?', a: 'Yes — it shows an active statement with a live progress bar, and flips to a “TRIP COMPLETE” ribbon once everything is settled.' },
-            ].map((f) => (
-              <details key={f.q} className="group rounded-2xl border border-slate-200/80 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/80 backdrop-blur">
-                <summary className="cursor-pointer flex items-center justify-between py-3.5 px-4 text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                  {f.q}<span className="text-slate-400 transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{f.a}</p>
-              </details>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="relative overflow-hidden rounded-[2rem] border border-brand-500/20 bg-gradient-to-br from-brand-50 via-white to-emerald-50/50 dark:from-brand-950/80 dark:via-slate-900/80 dark:to-slate-950 p-8 sm:p-12 text-center shadow-soft-lift mb-12">
-          <div aria-hidden="true" className="absolute inset-0 bg-brand-soft opacity-70" />
-          <h2 className="relative text-2xl sm:text-4xl font-display tracking-tight text-slate-900 dark:text-slate-50">
-            Next trip can’t plan itself — <span className="bg-gradient-to-r from-brand-600 to-emerald-500 dark:from-brand-400 dark:to-emerald-300 bg-clip-text text-transparent">but Tripwise can.</span>
-          </h2>
-          <a href="/app" className="relative mt-2 inline-flex items-center gap-2 rounded-2xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold px-7 py-3.5 text-sm transition-all active:scale-95 shadow-brand-glow">
-            Open Tripwise — it’s free <ArrowRight className="w-4 h-4" />
-          </a>
+        <section className="mt-32 mb-16">
+          <div className="bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/20 border border-teal-100 dark:border-teal-900/50 rounded-[3rem] p-10 md:p-16 text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-6">
+              Ready to travel smarter?
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 max-w-xl mx-auto mb-10">
+              Join thousands of travelers who use Tripwise to keep their friendships intact and their budgets on track.
+            </p>
+            <a href="/app" className="inline-flex justify-center items-center gap-2 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-8 py-4 text-base transition-all active:scale-95 shadow-lg shadow-teal-500/25">
+              Launch Tripwise Free <ArrowRight className="w-5 h-5" />
+            </a>
+          </div>
         </section>
       </div>
 
-      <footer className="border-t border-slate-200/70 dark:border-slate-800/60 mt-12">
-        <div className="w-full px-4 sm:px-6 lg:px-10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="bg-brand-gradient p-1.5 rounded-lg text-slate-950"><HandCoins className="w-4 h-4" /></span>
-            <span className="font-display text-sm text-slate-800 dark:text-slate-200">Tripwise</span>
-            <span className="text-[10px] text-slate-400 ml-1">© 2026 Mohd Naqeeb</span>
+            <span className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-1.5 rounded-lg text-slate-950">
+              <HandCoins className="w-4 h-4 stroke-[2]" />
+            </span>
+            <span className="font-bold text-slate-900 dark:text-white tracking-tight">Tripwise</span>
+            <span className="text-xs text-slate-400 ml-2">© 2026</span>
           </div>
-          <nav className="flex items-center gap-5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-            <a href="/about" className="hover:text-brand-600 dark:hover:text-brand-300 transition-colors">About</a>
-            <a href="/privacy" className="hover:text-brand-600 dark:hover:text-brand-300 transition-colors">Privacy Policy</a>
-            <a href="/app" className="hover:text-brand-600 dark:hover:text-brand-300 transition-colors">Open App</a>
+          <nav className="flex items-center gap-6 text-sm font-medium text-slate-500 dark:text-slate-400">
+            <a href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Twitter</a>
+            <a href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Privacy</a>
+            <a href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Terms</a>
           </nav>
         </div>
       </footer>

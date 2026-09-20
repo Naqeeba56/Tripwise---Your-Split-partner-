@@ -1,9 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Camera, X, Check, Smartphone, ArrowRight } from 'lucide-react';
+import { Users, Camera, X, Smartphone, ArrowRight } from 'lucide-react';
 import { compressToWebP } from '@/lib/imageUtils';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const joinSchema = z.object({
+  name: z.string().min(1, 'Please enter your name.'),
+  upiId: z.string().min(1, 'Please provide your UPI ID, GPay ID, or phone number.'),
+});
 
 export default function JoinTripModal({
   isOpen,
@@ -12,11 +20,30 @@ export default function JoinTripModal({
   onJoin,
   onClose,
 }) {
-  const [name, setName] = useState('');
-  const [upiId, setUpiId] = useState('');
   const [avatar, setAvatar] = useState(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [error, setError] = useState(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(joinSchema),
+    defaultValues: {
+      name: '',
+      upiId: '',
+    },
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      reset();
+      setAvatar(null);
+      setError(null);
+    }
+  }, [isOpen, reset]);
 
   if (!isOpen) return null;
 
@@ -35,22 +62,12 @@ export default function JoinTripModal({
     }
   };
 
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      setError('Please enter your name.');
-      return;
-    }
-    if (!upiId.trim()) {
-      setError('Please provide your UPI ID, GPay ID, or phone number for settlements.');
-      return;
-    }
-
+  const onSubmit = (data) => {
     if (onJoin) {
       onJoin({
-        name: name.trim(),
+        name: data.name,
         avatar: avatar,
-        upi_id: upiId.trim(),
+        upi_id: data.upiId,
       });
     }
   };
@@ -91,7 +108,7 @@ export default function JoinTripModal({
             </div>
           )}
 
-          <form onSubmit={handleFormSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* Avatar WebP Upload */}
             <div className="flex flex-col items-center justify-center gap-2">
               <label className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden relative shadow-sm">
@@ -127,11 +144,10 @@ export default function JoinTripModal({
               <input
                 type="text"
                 placeholder="e.g. Alex Rivera"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                required
+                {...register('name')}
+                className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${errors.name ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'}`}
               />
+              {errors.name && <p className="text-rose-500 text-[10px] mt-1 font-semibold">{errors.name.message}</p>}
             </div>
 
             {/* UPI ID / GPay / Number */}
@@ -144,12 +160,11 @@ export default function JoinTripModal({
                 <input
                   type="text"
                   placeholder="e.g. alex@okaxis or 9876543210@upi"
-                  value={upiId}
-                  onChange={(e) => setUpiId(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                  required
+                  {...register('upiId')}
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${errors.upiId ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'}`}
                 />
               </div>
+              {errors.upiId && <p className="text-rose-500 text-[10px] mt-1 font-semibold">{errors.upiId.message}</p>}
               <p className="text-[10px] text-slate-400 mt-1">
                 Used when members pay back what they owe you directly.
               </p>

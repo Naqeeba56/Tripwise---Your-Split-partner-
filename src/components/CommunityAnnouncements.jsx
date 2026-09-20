@@ -14,7 +14,10 @@ import {
   Tag,
   MessageCircle,
   X,
+  Camera,
 } from 'lucide-react';
+import { fetchAnnouncementsFromDb, createAnnouncementInDb } from '@/lib/supabaseDb';
+import { compressToWebP } from '@/lib/imageUtils';
 
 const INITIAL_ANNOUNCEMENTS = [
   {
@@ -75,6 +78,19 @@ export default function CommunityAnnouncements({
   const [description, setDescription] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   const [tagInput, setTagInput] = useState('');
+  const [image, setImage] = useState(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  React.useEffect(() => {
+    const loadAnnouncements = async () => {
+      const dbAnnouncements = await fetchAnnouncementsFromDb();
+      if (dbAnnouncements && dbAnnouncements.length > 0) {
+        setAnnouncements(dbAnnouncements);
+      }
+    };
+    loadAnnouncements();
+  }, []);
 
   const allTags = ['ALL', 'Trekking', 'Monsoon', 'Goa', 'Roadtrip', 'Camping', 'Himalayas', 'Foodie'];
 
@@ -83,10 +99,25 @@ export default function CommunityAnnouncements({
     return a.tags?.some((t) => t.toLowerCase() === selectedTag.toLowerCase());
   });
 
-  const handleCreateAnnouncement = (e) => {
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsCompressing(true);
+    try {
+      const webpBase64 = await compressToWebP(file, 800, 0.85);
+      setImage(webpBase64);
+    } catch (err) {
+      console.error('Image WebP compression error:', err);
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     if (!title.trim() || !destination.trim() || !contactInfo.trim()) return;
 
+    setIsLoading(true);
     const tagsArray = tagInput
       ? tagInput.split(',').map((t) => t.trim()).filter(Boolean)
       : ['Travel', 'Trip'];
@@ -102,10 +133,13 @@ export default function CommunityAnnouncements({
       description: description.trim(),
       contact_info: contactInfo.trim(),
       tags: tagsArray,
+      image_url: image,
       created_at: 'Just now',
     };
 
-    setAnnouncements([newPost, ...announcements]);
+    const savedPost = await createAnnouncementInDb(newPost, userProfile?.id);
+
+    setAnnouncements([savedPost, ...announcements]);
     setShowCreateModal(false);
     setTitle('');
     setDestination('');
@@ -114,6 +148,22 @@ export default function CommunityAnnouncements({
     setDescription('');
     setContactInfo('');
     setTagInput('');
+    setImage(null);
+    setIsLoading(false);
+  };
+
+  const getContactLink = (contact) => {
+    if (!contact) return '#';
+    const c = contact.toLowerCase();
+    if (c.includes('whatsapp') || c.includes('wa.me') || contact.match(/^\+?\d{10,14}$/)) {
+      const num = contact.replace(/\D/g, '');
+      return `https://wa.me/${num}`;
+    }
+    if (c.includes('instagram') || c.includes('ig') || c.includes('@')) {
+      const handle = contact.split('@').pop().split(' ')[0];
+      return `https://instagram.com/${handle}`;
+    }
+    return `mailto:${contact}`;
   };
 
   return (
@@ -218,6 +268,13 @@ export default function CommunityAnnouncements({
                 </div>
               </div>
 
+              {/* Image if available */}
+              {item.image_url && (
+                <div className="w-full h-32 rounded-xl overflow-hidden my-2 border border-slate-200 dark:border-slate-800">
+                  <img src={item.image_url} alt="Trip Image" className="w-full h-full object-cover" />
+                </div>
+              )}
+
               {/* Description */}
               <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3">
                 {item.description}
@@ -241,17 +298,15 @@ export default function CommunityAnnouncements({
               <span className="text-[11px] font-mono text-slate-400 truncate max-w-[150px]">
                 {item.contact_info}
               </span>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(item.contact_info);
-                  setCopiedId(item.id);
-                  setTimeout(() => setCopiedId(null), 1800);
-                }}
+              <a
+                href={getContactLink(item.contact_info)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
-                <span>{copiedId === item.id ? 'Copied!' : 'Connect'}</span>
-              </button>
+                <span>Connect</span>
+              </a>
             </div>
           </motion.div>
         ))}
@@ -284,6 +339,22 @@ export default function CommunityAnnouncements({
               </div>
 
               <form onSubmit={handleCreateAnnouncement} className="space-y-3">
+                {/* Image Upload */}
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <label className="w-full h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden relative shadow-sm">
+                    {image ? (
+                      <img src={image} alt="Trip Cover" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-slate-400">
+                        <Camera className="w-6 h-6 mb-1" />
+                        <span className="text-[10px] font-bold uppercase">Add Trip Image</span>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  </label>
+                  {isCompressing && <span className="text-[10px] text-teal-500 font-medium">Compressing...</span>}
+                </div>
+
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                     Announcement Headline
@@ -388,14 +459,16 @@ export default function CommunityAnnouncements({
                     type="button"
                     onClick={() => setShowCreateModal(false)}
                     className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-2xl text-xs"
+                    disabled={isLoading || isCompressing}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/20"
+                    disabled={isLoading || isCompressing}
                   >
-                    Publish Announcement
+                    {isLoading ? 'Publishing...' : 'Publish Announcement'}
                   </button>
                 </div>
               </form>

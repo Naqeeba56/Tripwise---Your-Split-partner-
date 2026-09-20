@@ -654,4 +654,65 @@ export const deleteTripInDb = async (tripId, userId) => {
   return false;
 };
 
+/**
+ * Fetch announcements from Supabase
+ */
+export const fetchAnnouncementsFromDb = async () => {
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false });
 
+      if (!error && data) {
+        return data;
+      }
+    } catch (err) {
+      console.warn('Supabase announcements query fallback:', err);
+    }
+  }
+  return [];
+};
+
+/**
+ * Create announcement in Supabase
+ */
+export const createAnnouncementInDb = async (announcementData, userId) => {
+  if (isSupabaseConfigured()) {
+    try {
+      const payload = {
+        creator_name: announcementData.creator_name,
+        creator_avatar: announcementData.creator_avatar,
+        title: announcementData.title,
+        destination: announcementData.destination,
+        date_range: announcementData.date_range,
+        budget_per_person: announcementData.budget_per_person,
+        description: announcementData.description,
+        contact_info: announcementData.contact_info,
+        tags: announcementData.tags,
+        image_url: announcementData.image_url || null,
+        created_at: new Date().toISOString(),
+      };
+
+      if (isValidUuid(userId)) {
+        payload.user_id = userId;
+      }
+
+      const { data, error } = await supabase
+        .from('announcements')
+        .insert(payload)
+        .select()
+        .single();
+      
+      if (!error && data) {
+        return data;
+      } else {
+        console.warn('Failed to insert announcement:', error);
+      }
+    } catch (err) {
+      console.warn('Supabase announcement insert error:', err);
+    }
+  }
+  return announcementData;
+};

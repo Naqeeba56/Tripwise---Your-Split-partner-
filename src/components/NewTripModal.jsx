@@ -1,9 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlaneTakeoff, Camera, X, Lock, Sliders, Shield } from 'lucide-react';
+import { PlaneTakeoff, Camera, X, Lock } from 'lucide-react';
 import { compressToWebP } from '@/lib/imageUtils';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const tripSchema = z.object({
+  name: z.string().min(1, 'Trip name is required').max(100, 'Trip name is too long'),
+  creatorName: z.string().min(1, 'Organizer name is required'),
+  creatorUpi: z.string().min(1, 'UPI ID is required').regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, 'Invalid UPI ID format'),
+  dailyLimit: z.coerce.number().min(0, 'Limit must be positive').default(10000),
+  expenseLimit: z.coerce.number().min(0, 'Limit must be positive').default(3000),
+});
 
 export default function NewTripModal({
   isOpen,
@@ -12,18 +23,42 @@ export default function NewTripModal({
   userProfile,
   onOpenAuthModal,
 }) {
-  const [name, setName] = useState('');
-  const [creatorName, setCreatorName] = useState(userProfile?.name || 'Organizer');
-  const [creatorUpi, setCreatorUpi] = useState(userProfile?.upi_id || 'naqeeb@upi');
   const [coverPic, setCoverPic] = useState(null);
-  const [dailyLimit, setDailyLimit] = useState(10000);
-  const [expenseLimit, setExpenseLimit] = useState(3000);
   const [isCompressing, setIsCompressing] = useState(false);
   const [error, setError] = useState(null);
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(tripSchema),
+    defaultValues: {
+      name: '',
+      creatorName: userProfile?.name || 'Organizer',
+      creatorUpi: userProfile?.upi_id || 'naqeeb@upi',
+      dailyLimit: 10000,
+      expenseLimit: 3000,
+    },
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        name: '',
+        creatorName: userProfile?.name || 'Organizer',
+        creatorUpi: userProfile?.upi_id || 'naqeeb@upi',
+        dailyLimit: 10000,
+        expenseLimit: 3000,
+      });
+      setCoverPic(null);
+      setError(null);
+    }
+  }, [isOpen, userProfile, reset]);
+
   if (!isOpen) return null;
 
-  // Requirement 9: Mandatory login check for creating trips
   if (!userProfile) {
     return (
       <AnimatePresence>
@@ -81,7 +116,6 @@ export default function NewTripModal({
 
     setIsCompressing(true);
     try {
-      // Requirement 11: Convert image to WebP format
       const webpBase64 = await compressToWebP(file, 1600, 0.85);
       setCoverPic(webpBase64);
     } catch (err) {
@@ -91,27 +125,18 @@ export default function NewTripModal({
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      setError('Trip name is required.');
-      return;
-    }
-
+  const onSubmit = (data) => {
     if (onCreateTrip) {
       onCreateTrip({
-        name: name.trim(),
+        name: data.name,
         image: coverPic,
         image_url: coverPic,
-        creatorName: creatorName.trim() || userProfile.name || 'Organizer',
-        creatorUpi: creatorUpi.trim() || 'naqeeb@upi',
-        daily_budget_limit: Number(dailyLimit) || 10000,
-        expense_budget_limit: Number(expenseLimit) || 3000,
+        creatorName: data.creatorName,
+        creatorUpi: data.creatorUpi,
+        daily_budget_limit: data.dailyLimit,
+        expense_budget_limit: data.expenseLimit,
       });
     }
-
-    setName('');
-    setCoverPic(null);
     onClose();
   };
 
@@ -147,7 +172,7 @@ export default function NewTripModal({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                 Trip Name
@@ -155,11 +180,10 @@ export default function NewTripModal({
               <input
                 type="text"
                 placeholder="e.g. Goa Beach Expedition 2026"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                required
+                {...register('name')}
+                className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${errors.name ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'}`}
               />
+              {errors.name && <p className="text-rose-500 text-[10px] mt-1 font-semibold">{errors.name.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -169,11 +193,10 @@ export default function NewTripModal({
                 </label>
                 <input
                   type="text"
-                  value={creatorName}
-                  onChange={(e) => setCreatorName(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                  required
+                  {...register('creatorName')}
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${errors.creatorName ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'}`}
                 />
+                {errors.creatorName && <p className="text-rose-500 text-[10px] mt-1 font-semibold">{errors.creatorName.message}</p>}
               </div>
 
               <div>
@@ -183,15 +206,13 @@ export default function NewTripModal({
                 <input
                   type="text"
                   placeholder="e.g. naqeeb@upi"
-                  value={creatorUpi}
-                  onChange={(e) => setCreatorUpi(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                  required
+                  {...register('creatorUpi')}
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${errors.creatorUpi ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'}`}
                 />
+                {errors.creatorUpi && <p className="text-rose-500 text-[10px] mt-1 font-semibold">{errors.creatorUpi.message}</p>}
               </div>
             </div>
 
-            {/* Budget Limits */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
@@ -199,11 +220,11 @@ export default function NewTripModal({
                 </label>
                 <input
                   type="number"
-                  value={dailyLimit}
-                  onChange={(e) => setDailyLimit(e.target.value)}
                   placeholder="10000"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                  {...register('dailyLimit')}
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${errors.dailyLimit ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'}`}
                 />
+                {errors.dailyLimit && <p className="text-rose-500 text-[10px] mt-1 font-semibold">{errors.dailyLimit.message}</p>}
               </div>
 
               <div>
@@ -212,15 +233,14 @@ export default function NewTripModal({
                 </label>
                 <input
                   type="number"
-                  value={expenseLimit}
-                  onChange={(e) => setExpenseLimit(e.target.value)}
                   placeholder="3000"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                  {...register('expenseLimit')}
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${errors.expenseLimit ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'}`}
                 />
+                {errors.expenseLimit && <p className="text-rose-500 text-[10px] mt-1 font-semibold">{errors.expenseLimit.message}</p>}
               </div>
             </div>
 
-            {/* Cover Banner Upload with WebP conversion */}
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                 Trip Cover Banner (Auto WebP format)

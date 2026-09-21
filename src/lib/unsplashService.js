@@ -13,12 +13,14 @@
  * falls back to curated images.unsplash.com photo IDs without crashing.
  */
 
-const UNSPLASH_KEY  = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || '';
-const UNSPLASH_BASE = 'https://api.unsplash.com';
+const UNSPLASH_KEY  = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || process.env.UNSPLASH_ACCESS_KEY || '';
+// Use local API proxy instead of direct Unsplash API to avoid CORS and key exposure on Vercel
+const API_BASE = '/api/unsplash';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const isConfigured = () => Boolean(UNSPLASH_KEY && UNSPLASH_KEY.length > 10);
+// Assume it's configured if we hit the proxy. The proxy will handle key checks.
+const isConfigured = () => true;
 
 /**
  * Build a search query that works well for Indian destinations.
@@ -41,39 +43,15 @@ export const searchPhotos = async (query, count = 5, orientation = 'landscape') 
   if (!isConfigured()) return [];
 
   try {
-    const params = new URLSearchParams({
-      query: buildQuery(query),
-      per_page: count,
-      orientation,
-      content_filter: 'high',
-      order_by: 'relevant',
-    });
-
-    const res = await fetch(`${UNSPLASH_BASE}/search/photos?${params}`, {
-      headers: {
-        Authorization: `Client-ID ${UNSPLASH_KEY}`,
-        'Accept-Version': 'v1',
-      },
-    });
+    const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}&count=${count}&orientation=${orientation}`);
 
     if (!res.ok) {
-      console.warn('[Unsplash] Search failed:', res.status, res.statusText);
+      console.warn('[Unsplash Proxy] Search failed:', res.status, res.statusText);
       return [];
     }
 
     const data = await res.json();
-
-    return (data.results || []).map((photo) => ({
-      id:              photo.id,
-      url:             photo.urls?.regular || photo.urls?.full,   // ~1080px wide
-      smallUrl:        photo.urls?.small,                          // ~400px wide
-      thumbUrl:        photo.urls?.thumb,                          // ~200px wide
-      rawUrl:          photo.urls?.raw,                            // full res
-      altDescription:  photo.alt_description || query,
-      credit:          photo.user?.name || 'Unsplash',
-      creditLink:      photo.user?.links?.html,
-      downloadUrl:     photo.links?.download_location,             // for attribution trigger
-    }));
+    return data.photos || [];
   } catch (err) {
     console.warn('[Unsplash] Network error:', err.message);
     return [];

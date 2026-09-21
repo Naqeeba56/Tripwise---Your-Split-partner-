@@ -343,6 +343,7 @@ export default function Home() {
       payers,
       category: category || 'Food',
       excludedMembers,
+      addedBy: userProfile?.name || 'Unknown',
     };
 
     // Editing an existing expense → update in place.

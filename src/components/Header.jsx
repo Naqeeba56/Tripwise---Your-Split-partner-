@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   HandCoins,
   Share2,
@@ -18,6 +18,8 @@ import {
   ShieldCheck,
   UserCircle,
   Coins,
+  MoreHorizontal,
+  X,
 } from 'lucide-react';
 import GlassTripDropdown from './GlassTripDropdown';
 import { isAdminEmail } from '@/lib/admin';
@@ -39,6 +41,8 @@ export default function Header({
   settlementsCount = 0,
   membersCount = 0,
 }) {
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: PieChart },
     ...(userProfile
@@ -82,6 +86,10 @@ export default function Header({
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
   }, [activeTab]);
+
+  // Split tabs for mobile view
+  const primaryTabs = tabs.slice(0, 4);
+  const moreTabs = tabs.slice(4);
 
   return (
     <>
@@ -231,30 +239,26 @@ export default function Header({
       </header>
 
       {/* Floating Bottom Navigation Dock for Mobile (< 640px) */}
-      <motion.nav
-        initial={{ opacity: 0, y: 60 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30, delay: 0.05 }}
-        className="sm:hidden fixed bottom-3 left-3 right-3 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl shadow-2xl scroll-snap-x overflow-x-auto no-scrollbar mobile-bottom-dock"
+      <nav
+        className="sm:hidden fixed bottom-3 left-3 right-3 z-[60] flex flex-row items-center justify-around gap-1 px-2 pt-1 pb-1 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl shadow-2xl mobile-bottom-dock"
         role="tablist"
         aria-label="App sections"
       >
-        {tabs.map((tab) => {
+        {primaryTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <motion.button
+            <button
               key={tab.id}
-              ref={(el) => {
-                tabRefs.current[tab.id] = el;
+              onClick={() => {
+                setActiveTab(tab.id);
+                setShowMoreMenu(false);
               }}
-              onClick={() => setActiveTab(tab.id)}
               role="tab"
               aria-selected={isActive}
-              whileTap={{ scale: 0.86 }}
-              className={`snap-center flex-shrink-0 flex flex-col items-center justify-center gap-1 min-w-16 px-3 py-2 rounded-2xl transition-colors relative ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 min-w-[64px] px-1 py-2 rounded-2xl transition-colors relative ${
                 isActive
-                  ? 'text-teal-700 dark:text-teal-200'
+                  ? 'text-teal-700 dark:text-teal-300'
                   : 'text-slate-500 dark:text-slate-400'
               }`}
             >
@@ -266,21 +270,82 @@ export default function Header({
                 />
               )}
               <span className="relative">
-                <Icon className="w-4 h-4 stroke-[2]" />
+                <Icon className="w-5 h-5 stroke-[2]" />
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-teal-500 text-slate-950">
+                  <span className="absolute -top-1.5 -right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-500 text-slate-950 leading-none">
                     {tab.badge}
                   </span>
                 )}
               </span>
-              <span className={`relative text-[9px] leading-tight whitespace-nowrap ${isActive ? 'font-bold' : 'font-medium'}`}>
+              <span className={`relative text-[10px] leading-tight whitespace-nowrap ${isActive ? 'font-bold' : 'font-medium'}`}>
                 {tab.label}
               </span>
-            </motion.button>
+            </button>
           );
         })}
-        <div className="snap-center flex-shrink-0 w-3" aria-hidden="true" />
-      </motion.nav>
+
+        {/* More Button */}
+        {moreTabs.length > 0 && (
+          <button
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 min-w-[64px] px-1 py-2 rounded-2xl transition-colors relative ${
+              showMoreMenu
+                ? 'text-teal-700 dark:text-teal-300'
+                : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            {showMoreMenu && (
+              <motion.span
+                layoutId="dock-active-pill"
+                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                className="absolute inset-0 rounded-2xl bg-teal-500/15 border border-teal-500/25"
+              />
+            )}
+            <span className="relative">
+              {showMoreMenu ? <X className="w-5 h-5 stroke-[2]" /> : <MoreHorizontal className="w-5 h-5 stroke-[2]" />}
+            </span>
+            <span className={`relative text-[10px] leading-tight whitespace-nowrap ${showMoreMenu ? 'font-bold' : 'font-medium'}`}>
+              More
+            </span>
+          </button>
+        )}
+      </nav>
+
+      {/* More Menu Dropup */}
+      <AnimatePresence>
+        {showMoreMenu && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="sm:hidden fixed bottom-[5.5rem] right-4 z-[55] w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden"
+          >
+            <div className="flex flex-col">
+              {moreTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setShowMoreMenu(false);
+                    }}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

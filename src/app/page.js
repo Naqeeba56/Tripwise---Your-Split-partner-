@@ -15,6 +15,7 @@ import {
   Star,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Footer from '@/components/Footer';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -231,22 +232,7 @@ export default function Home() {
         </section>
       </div>
 
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-1.5 rounded-lg text-slate-950">
-              <HandCoins className="w-4 h-4 stroke-[2]" />
-            </span>
-            <span className="font-bold text-slate-900 dark:text-white tracking-tight">Tripwise</span>
-            <span className="text-xs text-slate-400 ml-2">© 2026</span>
-          </div>
-          <nav className="flex items-center gap-6 text-sm font-medium text-slate-500 dark:text-slate-400">
-            <a href="/privacy" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Privacy Policy</a>
-            <a href="/about" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">About</a>
-            <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Twitter</a>
-          </nav>
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }

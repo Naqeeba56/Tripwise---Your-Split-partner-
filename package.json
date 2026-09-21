@@ -12,6 +12,7 @@
     "@hookform/resolvers": "^5.9.1",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.1",
+    "@vercel/analytics": "^2.0.1",
     "animejs": "^3.2.2",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^11.11.17",

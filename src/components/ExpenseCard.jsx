@@ -76,10 +76,11 @@ export default function ExpenseCard({
       : null;
   const payerNames = payers ? payers.map((p) => p.name) : [paidBy];
 
-  // Only the payer(s) of this expense or the trip creator may edit / delete it.
+  // Only the payer(s) of this expense, the trip creator, or the user who added it may edit / delete it.
   const canManage =
     !!currentUserName &&
     (currentUserName === tripCreatorName ||
+      currentUserName === expense.addedBy ||
       payerNames.some((n) => currentUserName === n));
 
   return (

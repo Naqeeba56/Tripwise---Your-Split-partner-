@@ -302,17 +302,40 @@ export const fetchTripExpenses = async (tripId, userId) => {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        return data.map((e) => ({
+        let expenses = data.map((e) => ({
           id: e.id,
           tripId: e.trip_id,
           title: e.title,
           amount: Number(e.amount),
           paidBy: e.paid_by,
           payers: Array.isArray(e.payers) && e.payers.length ? e.payers : null,
+          addedBy: e.added_by,
           category: e.category,
           excludedMembers: Array.isArray(e.excluded_members) ? e.excluded_members : [],
           date: e.date || e.created_at,
         }));
+
+        if (typeof window !== 'undefined' && userId) {
+          const saved = safeGetItem(getUserStorageKey(userId, `expenses_${tripId}`));
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              expenses = expenses.map((e) => {
+                const localMatch = parsed.find((p) => String(p.id) === String(e.id));
+                if (localMatch) {
+                  return {
+                    ...e,
+                    payers: e.payers || localMatch.payers,
+                    addedBy: e.addedBy || localMatch.addedBy,
+                  };
+                }
+                return e;
+              });
+            } catch (err) {}
+          }
+        }
+
+        return expenses;
       }
     } catch (err) {
       console.warn('Supabase expenses query fallback:', err);
@@ -343,6 +366,7 @@ export const createExpenseInDb = async (expenseData, userId) => {
     amount: Number(expenseData.amount),
     paidBy: expenseData.paidBy,
     payers: expenseData.payers || null,
+    addedBy: expenseData.addedBy || 'Unknown',
     category: expenseData.category || 'Food',
     excludedMembers: expenseData.excludedMembers || [],
     date: new Date().toISOString(),
@@ -360,6 +384,7 @@ export const createExpenseInDb = async (expenseData, userId) => {
           payers: newExp.payers,
           category: newExp.category,
           excluded_members: newExp.excludedMembers,
+          added_by: newExp.addedBy,
         })
         .select()
         .single();
@@ -375,6 +400,7 @@ export const createExpenseInDb = async (expenseData, userId) => {
             paid_by: newExp.paidBy,
             category: newExp.category,
             excluded_members: newExp.excludedMembers,
+            added_by: newExp.addedBy,
           })
           .select()
           .single();
@@ -440,6 +466,7 @@ export const updateExpenseInDb = async (expenseId, tripId, fields = {}, userId) 
         ...(fields.amount !== undefined ? { amount: Number(fields.amount) } : {}),
         ...(fields.paidBy !== undefined ? { paid_by: fields.paidBy } : {}),
         ...(fields.payers !== undefined ? { payers: fields.payers } : {}),
+        ...(fields.addedBy !== undefined ? { added_by: fields.addedBy } : {}),
         ...(fields.category !== undefined ? { category: fields.category } : {}),
         ...(fields.excludedMembers !== undefined ? { excluded_members: fields.excludedMembers } : {}),
       };
@@ -700,11 +727,24 @@ export const createAnnouncementInDb = async (announcementData, userId) => {
         payload.user_id = userId;
       }
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('announcements')
         .insert(payload)
         .select()
         .single();
+
+      if (error && (payload.user_id || payload.creator_id)) {
+        const safePayload = { ...payload };
+        delete safePayload.user_id;
+        delete safePayload.creator_id;
+        const retry = await supabase
+          .from('announcements')
+          .insert(safePayload)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (!error && data) {
         return data;

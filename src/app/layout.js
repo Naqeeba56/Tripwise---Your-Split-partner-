@@ -1,4 +1,5 @@
 import { Plus_Jakarta_Sans, Fraunces } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -118,6 +119,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-screen app-canvas text-slate-800 dark:text-slate-100 antialiased transition-colors duration-300">
         {children}
+        <Analytics />
       </body>
     </html>
   );

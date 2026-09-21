@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   HandCoins,
   Share2,
@@ -71,6 +72,16 @@ export default function Header({
       icon: Coins,
     },
   ];
+
+  /* Mobile bottom dock — keep the active tab scrolled into view so every
+     tab (incl. Currency, the last one) is reachable by a sideways swipe. */
+  const tabRefs = useRef({});
+  useEffect(() => {
+    const el = tabRefs.current[activeTab];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeTab]);
 
   return (
     <>
@@ -220,37 +231,56 @@ export default function Header({
       </header>
 
       {/* Floating Bottom Navigation Dock for Mobile (< 640px) */}
-      <nav className="sm:hidden fixed bottom-3 left-3 right-3 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl p-1.5 shadow-2xl flex items-center justify-around mobile-bottom-dock">
+      <motion.nav
+        initial={{ opacity: 0, y: 60 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30, delay: 0.05 }}
+        className="sm:hidden fixed bottom-3 left-3 right-3 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl shadow-2xl scroll-snap-x overflow-x-auto no-scrollbar mobile-bottom-dock"
+        role="tablist"
+        aria-label="App sections"
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button
+            <motion.button
               key={tab.id}
+              ref={(el) => {
+                tabRefs.current[tab.id] = el;
+              }}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-2.5 rounded-2xl transition-all relative ${
+              role="tab"
+              aria-selected={isActive}
+              whileTap={{ scale: 0.86 }}
+              className={`snap-center flex-shrink-0 flex flex-col items-center justify-center gap-1 min-w-16 px-3 py-2 rounded-2xl transition-colors relative ${
                 isActive
-                  ? 'bg-teal-500 text-slate-950 font-bold shadow-md shadow-teal-500/20 scale-105'
-                  : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'text-teal-700 dark:text-teal-200'
+                  : 'text-slate-500 dark:text-slate-400'
               }`}
             >
-              <Icon className="w-4 h-4 stroke-[2]" />
-              <span className="text-[9px] mt-0.5 leading-tight">{tab.label}</span>
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span
-                  className={`absolute -top-1 -right-1 text-[8px] font-bold px-1.5 py-0.2 rounded-full ${
-                    isActive
-                      ? 'bg-slate-950 text-teal-400'
-                      : 'bg-teal-500 text-slate-950'
-                  }`}
-                >
-                  {tab.badge}
-                </span>
+              {isActive && (
+                <motion.span
+                  layoutId="dock-active-pill"
+                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  className="absolute inset-0 rounded-2xl bg-teal-500/15 border border-teal-500/25"
+                />
               )}
-            </button>
+              <span className="relative">
+                <Icon className="w-4 h-4 stroke-[2]" />
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className="absolute -top-1 -right-1 text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-teal-500 text-slate-950">
+                    {tab.badge}
+                  </span>
+                )}
+              </span>
+              <span className={`relative text-[9px] leading-tight whitespace-nowrap ${isActive ? 'font-bold' : 'font-medium'}`}>
+                {tab.label}
+              </span>
+            </motion.button>
           );
         })}
-      </nav>
+        <div className="snap-center flex-shrink-0 w-3" aria-hidden="true" />
+      </motion.nav>
     </>
   );
 }

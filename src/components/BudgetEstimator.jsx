@@ -120,13 +120,29 @@ function PlaceImage({ photos, alt, className, fallbackSrc, w = 800, h = 600 }) {
   const [errored, setErrored] = useState(false);
 
   useEffect(() => {
+    let dead = false;
     setErrored(false);
-    if (!photos?.length) { setSrc(fallbackSrc || null); return; }
-    const photoName = photos[0]?.name;
-    if (!photoName) { setSrc(fallbackSrc || null); return; }
-    resolvePhotoUrl(photoName, h, w).then((url) => {
-      setSrc(url || getPlacePhotoUrl(photoName, h, w) || fallbackSrc || null);
-    });
+
+    const photoName = photos?.[0]?.name;
+    if (!photoName) {
+      setSrc(fallbackSrc || null);
+      return () => { dead = true; };
+    }
+
+    // Render the direct redirect URL synchronously: the browser follows the 302
+    // to the real Google-hosted JPEG itself — no CORS, no pre-fetch, no wait.
+    // This guarantees a photo shows the moment the card mounts, instead of
+    // waiting on / being blocked by the async (CORS-sensitive) resolver below.
+    setSrc(getPlacePhotoUrl(photoName, h, w) || fallbackSrc || null);
+
+    // Non-blocking upgrade to the cleaner lh3 URL when the resolver succeeds.
+    // Guarded with .catch + dead flag so a slow/rejected fetch can never blank
+    // the image or set state after unmount.
+    resolvePhotoUrl(photoName, h, w)
+      .then((url) => { if (!dead && url) setSrc(url); })
+      .catch(() => { /* keep the direct redirect URL */ });
+
+    return () => { dead = true; };
   }, [photos, fallbackSrc, w, h]);
 
   if (!src || errored) {
@@ -616,11 +632,14 @@ export default function BudgetEstimator({ onStartTripWithBudget }) {
       setFromGeo(fFinal);
       setToGeo(tFinal);
 
-      // Cover image: real Google Places photo → city DB fallback
-      if (tGeo?.photos?.length) {
-        resolvePhotoUrl(tGeo.photos[0].name, 800, 1400).then((url) => {
-          if (!cancelled) setCoverUrl(url || getCoverImage(dbTo));
-        });
+      // Cover image: render the direct Google redirect URL synchronously (fast,
+      // no CORS), then non-blockingly upgrade to the cleaner lh3 URL. Falls back
+      // to the city DB cover if the place resolves with no photo.
+      if (tGeo?.photos?.[0]?.name) {
+        setCoverUrl(getPlacePhotoUrl(tGeo.photos[0].name, 800, 1400));
+        resolvePhotoUrl(tGeo.photos[0].name, 800, 1400)
+          .then((url) => { if (!cancelled && url) setCoverUrl(url); })
+          .catch(() => { /* keep the direct redirect URL */ });
       } else {
         setCoverUrl(getCoverImage(dbTo));
       }

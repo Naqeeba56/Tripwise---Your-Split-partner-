@@ -120,7 +120,7 @@ export default function CurrencyConverter() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 pb-16 sm:pb-6">
+    <div className="max-w-4xl mx-auto space-y-5 pb-28 sm:pb-8">
       {/* Headline */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">

@@ -736,7 +736,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
-                  className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 pb-16 sm:pb-6"
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 pb-28 sm:pb-6"
                 >
                   {/* Left Column: Totals, Add Expense, Budget Monitor */}
                   <div className="lg:col-span-5 space-y-4 sm:space-y-6">
@@ -1019,7 +1019,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
-                  className="pb-16 sm:pb-6"
+                  className="pb-28 sm:pb-6"
                 >
                   <ProfilePanel
                     userProfile={userProfile}
@@ -1090,7 +1090,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
-                  className="pb-16 sm:pb-6"
+                  className="pb-28 sm:pb-6"
                 >
                   {currentTrip ? (
                     <MembersTab
@@ -1145,7 +1145,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
-                  className="pb-16 sm:pb-6"
+                  className="pb-28 sm:pb-6"
                 >
                   <CommunityAnnouncements
                     userProfile={userProfile}

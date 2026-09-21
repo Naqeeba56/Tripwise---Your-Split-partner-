@@ -87,7 +87,7 @@ export default function SettlementsTab({
   const userBalance = Math.round(netBalances[currentUserName] || 0);
 
   return (
-    <div className="space-y-4 sm:space-y-7 max-w-4xl mx-auto pb-16 sm:pb-6">
+    <div className="space-y-4 sm:space-y-7 max-w-4xl mx-auto pb-28 sm:pb-6">
       {/* 1. Quick Personal Overview Card */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm">

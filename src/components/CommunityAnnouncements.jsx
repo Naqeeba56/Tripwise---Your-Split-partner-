@@ -81,6 +81,7 @@ export default function CommunityAnnouncements({
   const [image, setImage] = useState(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState(null);
 
   React.useEffect(() => {
     const loadAnnouncements = async () => {
@@ -115,7 +116,15 @@ export default function CommunityAnnouncements({
 
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !destination.trim() || !contactInfo.trim()) return;
+    setFormError(null);
+    if (!title.trim() || !destination.trim() || !contactInfo.trim()) {
+      setFormError('Please fill in at least the Title, Destination and Contact Info.');
+      return;
+    }
+    if (description.trim() && description.trim().length < 10) {
+      setFormError('Description should be at least 10 characters if you add one.');
+      return;
+    }
 
     setIsLoading(true);
     const tagsArray = tagInput
@@ -141,6 +150,7 @@ export default function CommunityAnnouncements({
 
     setAnnouncements([savedPost, ...announcements]);
     setShowCreateModal(false);
+    setFormError(null);
     setTitle('');
     setDestination('');
     setDateRange('');
@@ -453,6 +463,12 @@ export default function CommunityAnnouncements({
                     />
                   </div>
                 </div>
+
+                {formError && (
+                  <p className="text-[11px] font-medium text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2">
+                    {formError}
+                  </p>
+                )}
 
                 <div className="pt-2 flex gap-3">
                   <button

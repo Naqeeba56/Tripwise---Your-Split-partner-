@@ -4,13 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Camera, X, Smartphone, ArrowRight } from 'lucide-react';
 import { compressToWebP } from '@/lib/imageUtils';
+import { isValidUpiOrMobile } from '@/lib/validation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 const joinSchema = z.object({
   name: z.string().min(1, 'Please enter your name.'),
-  upiId: z.string().min(1, 'Please provide your UPI ID, GPay ID, or phone number.'),
+  upiId: z
+    .string()
+    .min(1, 'Please provide your UPI ID, GPay ID, or phone number.')
+    .refine(isValidUpiOrMobile, {
+      message: 'Enter a UPI handle (name@bank) or Indian mobile number (6-9 digits, 10-digit).',
+    }),
 });
 
 export default function JoinTripModal({

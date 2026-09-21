@@ -16,6 +16,7 @@ import {
   Megaphone,
   ShieldCheck,
   UserCircle,
+  Coins,
 } from 'lucide-react';
 import GlassTripDropdown from './GlassTripDropdown';
 import { isAdminEmail } from '@/lib/admin';
@@ -63,6 +64,11 @@ export default function Header({
       id: 'community',
       label: 'Community',
       icon: Megaphone,
+    },
+    {
+      id: 'currency',
+      label: 'Currency',
+      icon: Coins,
     },
   ];
 

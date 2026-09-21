@@ -31,9 +31,26 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ------------------------------------------------------------------
 -- 3. Ensure expenses has the optional excluded_members column used by
 --    the expense form (already present in most projects, idempotent).
+--    Also add the `payers` JSONB column — WITHOUT it, the "paid by
+--    multiple" feature silently drops every payer except the first
+--    (the insert falls back to storing only paid_by).
 -- ------------------------------------------------------------------
 ALTER TABLE public.expenses
   ADD COLUMN IF NOT EXISTS excluded_members JSONB DEFAULT '[]'::jsonb;
+
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS payers JSONB DEFAULT '[]'::jsonb;
+
+-- ------------------------------------------------------------------
+-- 3b. Announcements: the community-board form stores an image (image_url)
+--     and the author (user_id). Without these columns the INSERT fails
+--     (error 42703) and announcements never reach the database.
+-- ------------------------------------------------------------------
+ALTER TABLE public.announcements
+  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+ALTER TABLE public.announcements
+  ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 -- ------------------------------------------------------------------
 -- 4. Ensure Row Level Security is enabled on all tables.

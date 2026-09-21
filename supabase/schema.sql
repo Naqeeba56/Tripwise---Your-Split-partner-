@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     amount NUMERIC NOT NULL CHECK (amount > 0),
     paid_by TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT 'Food',
+    payers JSONB DEFAULT '[]'::jsonb,
+    excluded_members JSONB DEFAULT '[]'::jsonb,
     date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -70,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.settlements (
 CREATE TABLE IF NOT EXISTS public.announcements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     creator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     creator_name TEXT NOT NULL,
     creator_avatar TEXT,
     title TEXT NOT NULL,
@@ -79,6 +82,7 @@ CREATE TABLE IF NOT EXISTS public.announcements (
     description TEXT NOT NULL,
     contact_info TEXT NOT NULL,
     tags TEXT[] DEFAULT '{}',
+    image_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

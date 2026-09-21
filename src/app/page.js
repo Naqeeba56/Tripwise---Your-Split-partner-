@@ -241,9 +241,9 @@ export default function Home() {
             <span className="text-xs text-slate-400 ml-2">© 2026</span>
           </div>
           <nav className="flex items-center gap-6 text-sm font-medium text-slate-500 dark:text-slate-400">
-            <a href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Twitter</a>
-            <a href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Privacy Policy</a>
+            <a href="/about" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">About</a>
+            <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Twitter</a>
           </nav>
         </div>
       </footer>

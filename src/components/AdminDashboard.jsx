@@ -155,7 +155,9 @@ const stats = useMemo(() => {
       monthMap[`${d.getFullYear()}-${d.getMonth()}`] = 0;
     }
     data.expenses.forEach((e) => {
-      const d = new Date(e.created_at || e.date);
+      const raw = e.created_at || e.date;
+      const d = raw ? new Date(raw) : null;
+      if (!d || isNaN(d.getTime())) return; // skip malformed/null dates
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       if (key in monthMap) monthMap[key] += Number(e.amount || 0);
     });
@@ -187,10 +189,41 @@ const stats = useMemo(() => {
       return { month: MONTHS[Number(m)], users: acc };
     });
 
+    // Spend is attributed to EVERY payer of a multi-payer expense (not just the
+    // first "paid_by"), so the leaderboard reflects real contributions. If each
+    // payer contributed an equal share we split evenly; otherwise we trust the
+    // stored per-payer `amount` entries.
     const spenderMap = {};
     data.expenses.forEach((e) => {
-      const p = e.paid_by || 'Unknown';
-      spenderMap[p] = (spenderMap[p] || 0) + Number(e.amount || 0);
+      const total = Number(e.amount || 0);
+      let payers;
+      try {
+        payers = Array.isArray(e.payers) ? e.payers : [];
+      } catch {
+        payers = [];
+      }
+      if (payers.length > 1) {
+        let split = 0;
+        const explicit = payers.every((p) => p && typeof p === 'object' && p.amount != null);
+        if (explicit) {
+          split = payers.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        } else {
+          split = total / payers.length;
+        }
+        const names = payers.map((p) =>
+          typeof p === 'string' ? p : p.name || p.memberName || 'Unknown'
+        );
+        names.forEach((n, i) => {
+          const share = explicit ? Number(payers[i]?.amount || 0) : split;
+          spenderMap[n] = (spenderMap[n] || 0) + share;
+        });
+      } else if (payers.length === 1) {
+        const n = typeof payers[0] === 'string' ? payers[0] : payers[0].name || 'Unknown';
+        spenderMap[n] = (spenderMap[n] || 0) + total;
+      } else {
+        const p = e.paid_by || 'Unknown';
+        spenderMap[p] = (spenderMap[p] || 0) + total;
+      }
     });
     const topSpenders = Object.entries(spenderMap)
       .map(([name, value]) => ({ name, value: Math.round(value) }))

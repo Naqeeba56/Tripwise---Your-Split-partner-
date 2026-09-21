@@ -40,6 +40,7 @@ import ProfilePanel from '@/components/ProfilePanel';
 import SettlementsTab from '@/components/SettlementsTab';
 import MembersTab from '@/components/MembersTab';
 import CommunityAnnouncements from '@/components/CommunityAnnouncements';
+import CurrencyConverter from '@/components/CurrencyConverter';
 import NewTripModal from '@/components/NewTripModal';
 import AuthModal from '@/components/AuthModal';
 import GlassMemberDropdown from '@/components/GlassMemberDropdown';
@@ -94,6 +95,7 @@ export default function Home() {
   const [paidByAmounts, setPaidByAmounts] = useState({});   // { memberName: amount }
   const [category, setCategory] = useState('Food');
   const [excludedMembers, setExcludedMembers] = useState([]);
+  const [formErrors, setFormErrors] = useState({}); // { field: message } for inline validation
   const [expenseToEdit, setExpenseToEdit] = useState(null); // editing an existing expense
   const [expenseToDeleteId, setExpenseToDeleteId] = useState(null);
   const [appError, setAppError] = useState(null);
@@ -279,6 +281,7 @@ export default function Home() {
     setExcludedMembers([]);
     setExpenseToEdit(null);
     setAppError(null);
+    setFormErrors({});
   };
 
   // Build the normalized payers array for single or multi-payer mode.
@@ -294,38 +297,41 @@ export default function Home() {
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
+    const errors = {};
     if (!title || title.trim() === '') {
-      setAppError('Expense title cannot be empty.');
-      return;
+      errors.title = 'Expense title cannot be empty.';
     }
 
     const numAmount = parseFloat(amount);
     if (!numAmount || numAmount <= 0) {
-      setAppError('Please enter a valid expense amount.');
+      errors.amount = 'Please enter a valid expense amount.';
+    }
+
+    if (paidByMode === 'single' && !paidBy) {
+      errors.paidBy = 'Please select who paid for this expense.';
+    }
+
+    if (paidByMode === 'multiple') {
+      const splitAmounts = Object.values(paidByAmounts).filter((v) => Number(v) > 0);
+      if (!splitAmounts.length) {
+        errors.paidBy = 'Select at least one member and enter how much each paid.';
+      } else {
+        const splitSum = splitAmounts.reduce((a, b) => a + Number(b), 0);
+        if (Math.abs(splitSum - numAmount) > 0.5) {
+          errors.paidBy = `Split amounts must add up to the total (₹${numAmount.toLocaleString('en-IN')}).`;
+        }
+      }
+    }
+
+    setFormErrors(errors);
+    if (Object.keys(errors).length) {
+      setAppError(Object.values(errors)[0]);
       return;
     }
 
     if (!currentTrip) {
       setAppError('No active trip selected.');
       return;
-    }
-
-    if (paidByMode === 'single' && !paidBy) {
-      setAppError('Please select who paid for this expense.');
-      return;
-    }
-
-    if (paidByMode === 'multiple') {
-      const splitAmounts = Object.values(paidByAmounts).filter((v) => Number(v) > 0);
-      if (!splitAmounts.length) {
-        setAppError('Select at least one member and enter how much each paid.');
-        return;
-      }
-      const splitSum = splitAmounts.reduce((a, b) => a + Number(b), 0);
-      if (Math.abs(splitSum - numAmount) > 0.5) {
-        setAppError(`Split amounts (₹${splitSum.toLocaleString('en-IN')}) must add up to the total (₹${numAmount.toLocaleString('en-IN')}).`);
-        return;
-      }
     }
 
     const payers = buildPayers(numAmount);
@@ -385,6 +391,7 @@ export default function Home() {
       hasPayers ? Object.fromEntries(exp.payers.map((p) => [p.name, p.amount])) : {}
     );
     setExpenseToEdit(exp);
+    setFormErrors({});
     const panel = document.getElementById('quick-expense-panel');
     if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
@@ -791,6 +798,10 @@ export default function Home() {
                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl px-3 py-3 sm:py-3 text-sm sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
                           />
 
+                          {formErrors.title && (
+                            <p className="mt-1.5 text-[11px] font-medium text-rose-500">{formErrors.title}</p>
+                          )}
+
                           {/* appError now surfaces as a floating toast (see bottom of page) */}
                         </div>
 
@@ -806,6 +817,9 @@ export default function Home() {
                               onChange={(e) => setAmount(e.target.value)}
                               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl px-3 py-3 sm:py-3 text-sm sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
                             />
+                            {formErrors.amount && (
+                              <p className="mt-1.5 text-[11px] font-medium text-rose-500">{formErrors.amount}</p>
+                            )}
                           </div>
 
                           <div className="sm:col-span-2">
@@ -912,6 +926,9 @@ export default function Home() {
                                   </span>
                                 </div>
                               </div>
+                            )}
+                            {formErrors.paidBy && (
+                              <p className="mt-1.5 text-[11px] font-medium text-rose-500">{formErrors.paidBy}</p>
                             )}
                           </div>
                         </div>
@@ -1104,6 +1121,19 @@ export default function Home() {
                   transition={{ duration: 0.2 }}
                 >
                   <BudgetEstimator />
+                </motion.div>
+              )}
+
+              {/* 4.5 CURRENCY CONVERTER TAB */}
+              {activeTab === 'currency' && (
+                <motion.div
+                  key="currency"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <CurrencyConverter />
                 </motion.div>
               )}
 

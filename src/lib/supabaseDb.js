@@ -696,6 +696,7 @@ export const createAnnouncementInDb = async (announcementData, userId) => {
       };
 
       if (isValidUuid(userId)) {
+        payload.creator_id = userId;
         payload.user_id = userId;
       }
 
@@ -704,15 +705,16 @@ export const createAnnouncementInDb = async (announcementData, userId) => {
         .insert(payload)
         .select()
         .single();
-      
+
       if (!error && data) {
         return data;
-      } else {
-        console.warn('Failed to insert announcement:', error);
       }
+      console.warn('Failed to insert announcement:', error);
     } catch (err) {
       console.warn('Supabase announcement insert error:', err);
     }
   }
-  return announcementData;
+  // Fallback: keep the object local so the UI still shows it, but flag that
+  // it did not reach the database.
+  return { ...announcementData, _localOnly: true };
 };

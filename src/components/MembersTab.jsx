@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Camera, Plus, Check, Shield, Smartphone, Baby, PhoneCall, Trash2 } from 'lucide-react';
 import { compressToWebP } from '@/lib/imageUtils';
+import { isValidUpiHandle, isValidIndianMobile } from '@/lib/validation';
 import ConfirmModal from './ConfirmModal';
 
 export default function MembersTab({
@@ -68,6 +69,16 @@ export default function MembersTab({
     e.preventDefault();
     if (!newMemberName.trim()) {
       setError('Member name cannot be empty.');
+      return;
+    }
+
+    if (newMemberUpi.trim() && !isValidUpiHandle(newMemberUpi)) {
+      setError('UPI ID must be a handle like name@okaxis or name@ybl.');
+      return;
+    }
+
+    if (newMemberUpiNumber.trim() && !isValidIndianMobile(newMemberUpiNumber)) {
+      setError('UPI number must be a valid 10-digit Indian mobile (starts with 6-9).');
       return;
     }
 

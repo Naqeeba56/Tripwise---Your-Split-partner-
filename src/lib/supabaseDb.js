@@ -329,6 +329,9 @@ export const fetchTripExpenses = async (tripId, userId) => {
         const localById = new Map(
           (localExpenses || []).map((le) => [String(le.id), le])
         );
+        // Rows that reached Supabase but are missing payer/exclusion data: we
+        // patch them below so the correction is permanent for every device.
+        const needPatch = [];
 
         dbExpenses = data.map((e) => {
           const local = localById.get(String(e.id));
@@ -338,6 +341,7 @@ export const fetchTripExpenses = async (tripId, userId) => {
           let excludedMembers = Array.isArray(e.excluded_members)
             ? e.excluded_members
             : [];
+          let willPatch = null;
 
           // Backfill only the fields the DB row is missing.
           if (local) {
@@ -348,6 +352,11 @@ export const fetchTripExpenses = async (tripId, userId) => {
             ) {
               payers = local.payers;
               paidBy = paidBy || local.paidBy;
+              if (Array.isArray(e.payers) && e.payers.length) {
+                // Already persisted; nothing to patch.
+              } else {
+                willPatch = { ...(willPatch || {}), payers: local.payers };
+              }
             }
             if (
               (!Array.isArray(excludedMembers) || excludedMembers.length === 0) &&
@@ -355,7 +364,20 @@ export const fetchTripExpenses = async (tripId, userId) => {
               local.excludedMembers.length
             ) {
               excludedMembers = local.excludedMembers;
+              if (
+                !Array.isArray(e.excluded_members) ||
+                e.excluded_members.length === 0
+              ) {
+                willPatch = {
+                  ...(willPatch || {}),
+                  excluded_members: local.excludedMembers,
+                };
+              }
             }
+          }
+
+          if (willPatch) {
+            needPatch.push({ id: e.id, fields: willPatch });
           }
 
           return {
@@ -372,6 +394,24 @@ export const fetchTripExpenses = async (tripId, userId) => {
             date: (e.created_at || e.date || new Date()).toString(),
           };
         });
+
+        // Self-heal: permanently write the richer payer/exclusion data back to
+        // Supabase so it survives cache clears and works on every device.
+        if (needPatch.length > 0 && isSupabaseConfigured()) {
+          needPatch.forEach(({ id, fields }) => {
+            supabase
+              .from('expenses')
+              .update(fields)
+              .eq('id', id)
+              .eq('trip_id', tripId)
+              .then(({ error: patchErr }) => {
+                if (patchErr) {
+                  console.warn('Expense payers self-heal skipped:', patchErr.message);
+                }
+              })
+              .catch(() => {});
+          });
+        }
       }
     } catch (err) {
       console.warn('Supabase expenses query fallback:', err);
@@ -427,6 +467,12 @@ export const createExpenseInDb = async (expenseData, userId) => {
       // (e.g. `payers`, `excluded_members`, `added_by`, or `user_id`). This is
       // what previously made inserts silently fail → data only lived in
       // localStorage and "disappeared" after a refresh.
+      //
+      // IMPORTANT: the retry must start from the SAME full payload as the first
+      // insert and only drop the SPECIFIC column(s) the error reports as
+      // missing. Previously this started WITHOUT `payers`/`added_by`/`user_id`,
+      // so ANY failed first insert (even a transient error) silently stripped
+      // "paid by multiple" payers → after refresh it reverted to a single payer.
       if (error) {
         const msg = `${error.message || ''} ${error.details || ''}`.toLowerCase();
         let retryPayload = {
@@ -434,8 +480,11 @@ export const createExpenseInDb = async (expenseData, userId) => {
           title: newExp.title,
           amount: newExp.amount,
           paid_by: newExp.paidBy,
+          payers: newExp.payers,
           category: newExp.category,
           excluded_members: newExp.excludedMembers,
+          added_by: newExp.addedBy,
+          user_id: newExp.userId,
         };
         if (/payers|column.*does not exist|42703/.test(msg)) {
           delete retryPayload.payers;

@@ -320,21 +320,58 @@ export const fetchTripExpenses = async (tripId, userId) => {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        dbExpenses = data.map((e) => ({
-          id: e.id,
-          tripId: e.trip_id,
-          title: e.title,
-          amount: Number(e.amount),
-          paidBy: e.paid_by,
-          payers: (Array.isArray(e.payers) && e.payers.length) ? e.payers : null,
-          addedBy: e.added_by,
-          userId: e.user_id,
-          category: e.category,
-          excludedMembers: Array.isArray(e.excluded_members)
+        // Index the local cache by id so a row that reached the database can be
+        // enriched from the richer local snapshot. The browser cache stores the
+        // FULL payers/excludedMembers arrays; the database row may not if the
+        // live schema was created before those columns existed (the insert
+        // retry drops them). Without this backfill a "paid by multiple" expense
+        // reverts to a single name (and wrong settlement) after a refresh.
+        const localById = new Map(
+          (localExpenses || []).map((le) => [String(le.id), le])
+        );
+
+        dbExpenses = data.map((e) => {
+          const local = localById.get(String(e.id));
+          let payers =
+            Array.isArray(e.payers) && e.payers.length ? e.payers : null;
+          let paidBy = e.paid_by;
+          let excludedMembers = Array.isArray(e.excluded_members)
             ? e.excluded_members
-            : [],
-          date: (e.created_at || e.date || new Date()).toString(),
-        }));
+            : [];
+
+          // Backfill only the fields the DB row is missing.
+          if (local) {
+            if (
+              (!Array.isArray(payers) || payers.length === 0) &&
+              Array.isArray(local.payers) &&
+              local.payers.length
+            ) {
+              payers = local.payers;
+              paidBy = paidBy || local.paidBy;
+            }
+            if (
+              (!Array.isArray(excludedMembers) || excludedMembers.length === 0) &&
+              Array.isArray(local.excludedMembers) &&
+              local.excludedMembers.length
+            ) {
+              excludedMembers = local.excludedMembers;
+            }
+          }
+
+          return {
+            id: e.id,
+            tripId: e.trip_id,
+            title: e.title,
+            amount: Number(e.amount),
+            paidBy,
+            payers,
+            addedBy: e.added_by,
+            userId: e.user_id,
+            category: e.category,
+            excludedMembers,
+            date: (e.created_at || e.date || new Date()).toString(),
+          };
+        });
       }
     } catch (err) {
       console.warn('Supabase expenses query fallback:', err);

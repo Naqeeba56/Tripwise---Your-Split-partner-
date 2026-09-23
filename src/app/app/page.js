@@ -189,10 +189,24 @@ export default function Home() {
       const trips = await fetchUserTrips(userId);
       setAllTrips(trips);
       if (trips.length > 0) {
-        const firstTripId = trips[0].id;
-        setActiveTripId(firstTripId);
-        const tripExps = await fetchTripExpenses(firstTripId, userId);
+        // Restore the trip the user was last viewing so a refresh does NOT
+        // jump back to the newest/first trip (which made members think their
+        // just-added expense belonged to a different trip).
+        let targetTripId = trips[0].id;
+        if (typeof window !== 'undefined') {
+          const saved = safeGetItem(getUserStorageKey(userId, 'active_trip'));
+          if (
+            saved &&
+            trips.some((t) => String(t.id) === String(saved))
+          ) {
+            targetTripId = saved;
+          }
+        }
+        setActiveTripId(targetTripId);
+        const tripExps = await fetchTripExpenses(targetTripId, userId);
         setExpenses(tripExps);
+        // Keep the restored choice in sync so the next refresh is stable too.
+        safeSetItem(getUserStorageKey(userId, 'active_trip'), targetTripId);
       } else {
         setActiveTripId(null);
         setExpenses([]);
@@ -214,6 +228,10 @@ export default function Home() {
   // Switch Active Trip and load its expenses
   const handleSelectTrip = async (tripId) => {
     setActiveTripId(tripId);
+    // Remember the active trip so a refresh opens the same trip, not the first.
+    if (typeof window !== 'undefined' && userProfile?.id && tripId) {
+      safeSetItem(getUserStorageKey(userProfile.id, 'active_trip'), tripId);
+    }
     if (userProfile?.id && tripId) {
       const tripExps = await fetchTripExpenses(tripId, userProfile.id);
       setExpenses(tripExps);

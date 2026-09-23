@@ -57,21 +57,23 @@ body {
   overflow-x: hidden;
 }
 
-/* App surface canvas — a warm, classy off-white in light mode and a deep
-   inky slate in dark mode, so both read premium rather than harsh/bright. */
+/* App surface canvas — a warm, classy ivory with a whisper of sage in light
+   mode and a deep, neutral warm charcoal in dark mode. No harsh white, no
+   cold blue, no green cast — the desaturated "safari-luxe" palette reads calm
+   & premium. */
 .app-canvas {
   background:
-    radial-gradient(120% 95% at 0% 0%, #ffffff 0%, #f6f4ef 48%, #efece4 88%, #ece9df 100%);
+    radial-gradient(120% 95% at 0% 0%, #fdfbf8 0%, #f6f2ea 48%, #efe9dd 88%, #ece5d8 100%);
 }
 .dark .app-canvas {
   background:
-    radial-gradient(120% 95% at 0% 0%, #111a2b 0%, #0b1220 55%, #070d16 88%, #050a12 100%);
+    radial-gradient(120% 95% at 0% 0%, #161513 0%, #121110 55%, #0c0b0a 88%, #080707 100%);
 }
 
 /* Thin decorative tint band used behind the header/hero so the top of
-   the light page feels softly lit instead of flat white. */
+   the light page feels softly gilded instead of flat white. */
 .app-top-tint {
-  background: linear-gradient(180deg, rgba(20, 184, 166, 0.06) 0%, rgba(255, 255, 255, 0) 240px);
+  background: linear-gradient(180deg, rgba(185, 148, 84, 0.06) 0%, rgba(255, 255, 255, 0) 240px);
 }
 
 /* Custom Sleek Scrollbar */
@@ -87,7 +89,7 @@ body {
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(20, 184, 166, 0.5);
+  background: rgba(58, 161, 124, 0.55);
 }
 
 /* Utility to hide scrollbar while preserving scroll functionality */
@@ -346,13 +348,15 @@ body {
     --sidebar-ring: oklch(0.556 0 0);
   }
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border, #e2e8f0);
+    outline-color: var(--ring, rgba(58, 161, 124, 0.4));
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background, #ffffff);
+    color: var(--foreground, #111827);
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
   }
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import anime from 'animejs';
 import {
   ArrowRight,
   HandCoins,
@@ -30,6 +31,52 @@ const HERO_ART = {
 };
 
 export default function Home() {
+  const featuresRef = useRef(null);
+
+  // Subtle anime.js entrance: feature cards rise & fade in with a gentle
+  // stagger once they scroll into view. Complements the existing framer-motion
+  // section headers — a soft, classy "travel editorial" reveal rather than a
+  // loud one. Respects prefers-reduced-motion.
+  useEffect(() => {
+    const grid = featuresRef.current;
+    if (!grid || typeof IntersectionObserver === 'undefined') return;
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) return;
+
+    const cards = Array.from(grid.children);
+    const reduceMoved = (el) => {
+      if (!el) return;
+      el.style.opacity = '1';
+      el.style.transform = '';
+    };
+    // Start cards hidden UNLESS we bail below (safety for non-JS/hydration).
+    cards.forEach(reduceMoved);
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          io.disconnect();
+          anime({
+            targets: cards,
+            opacity: [0, 1],
+            translateY: [24, 0],
+            scale: [0.98, 1],
+            duration: 620,
+            delay: anime.stagger(90, { start: 50 }),
+            easing: 'easeOutCubic',
+          });
+        });
+      },
+      { threshold: 0.15 }
+    );
+    io.observe(grid);
+
+    return () => io.disconnect();
+  }, []);
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased selection:bg-teal-500/30 selection:text-teal-900 dark:selection:text-teal-100">
       <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-white/70 dark:bg-slate-950/70 border-b border-slate-200/50 dark:border-slate-800/50">
@@ -154,7 +201,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div ref={featuresRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: ArrowRightLeft, title: 'Smart Splitting', blurb: 'Advanced algorithms minimize total transactions between friends automatically.' },
               { icon: Wallet, title: '1-Tap UPI Settlement', blurb: 'Generates direct payment links for GPay/PhonePe with pre-filled exact amounts.' },
@@ -165,12 +212,8 @@ export default function Home() {
             ].map((f, i) => {
               const Icon = f.icon;
               return (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  key={f.title} 
+                <div
+                  key={f.title}
                   className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-6 group-hover:scale-110 transition-transform">
@@ -178,7 +221,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{f.title}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{f.blurb}</p>
-                </motion.div>
+                </div>
               );
             })}
           </div>

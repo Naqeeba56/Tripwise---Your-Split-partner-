@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { safeSetItem, safeGetItem } from './storage';
+import { friendlyError } from './errorMessages';
 
 /**
  * Supabase Database Service with User-Isolation and Storage Cache
@@ -293,6 +294,23 @@ export const createTripInDb = async (tripData, userId) => {
 export const fetchTripExpenses = async (tripId, userId) => {
   if (!tripId) return [];
 
+  // Load the user's offline cache FIRST. Anything saved here that is NOT found
+  // in the database (e.g. an insert that failed because the live schema is
+  // missing a column) is merged back in so expenses NEVER vanish on refresh.
+  let localExpenses = [];
+  if (typeof window !== 'undefined' && userId) {
+    const saved = safeGetItem(getUserStorageKey(userId, `expenses_${tripId}`));
+    if (saved) {
+      try {
+        localExpenses = JSON.parse(saved);
+        if (!Array.isArray(localExpenses)) localExpenses = [];
+      } catch (e) {
+        localExpenses = [];
+      }
+    }
+  }
+
+  let dbExpenses = [];
   if (isSupabaseConfigured() && isValidUuid(tripId)) {
     try {
       const { data, error } = await supabase
@@ -302,56 +320,32 @@ export const fetchTripExpenses = async (tripId, userId) => {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        let expenses = data.map((e) => ({
+        dbExpenses = data.map((e) => ({
           id: e.id,
           tripId: e.trip_id,
           title: e.title,
           amount: Number(e.amount),
           paidBy: e.paid_by,
-          payers: Array.isArray(e.payers) && e.payers.length ? e.payers : null,
+          payers: (Array.isArray(e.payers) && e.payers.length) ? e.payers : null,
           addedBy: e.added_by,
+          userId: e.user_id,
           category: e.category,
-          excludedMembers: Array.isArray(e.excluded_members) ? e.excluded_members : [],
-          date: e.date || e.created_at,
+          excludedMembers: Array.isArray(e.excluded_members)
+            ? e.excluded_members
+            : [],
+          date: (e.created_at || e.date || new Date()).toString(),
         }));
-
-        if (typeof window !== 'undefined' && userId) {
-          const saved = safeGetItem(getUserStorageKey(userId, `expenses_${tripId}`));
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              expenses = expenses.map((e) => {
-                const localMatch = parsed.find((p) => String(p.id) === String(e.id));
-                if (localMatch) {
-                  return {
-                    ...e,
-                    payers: e.payers || localMatch.payers,
-                    addedBy: e.addedBy || localMatch.addedBy,
-                  };
-                }
-                return e;
-              });
-            } catch (err) {}
-          }
-        }
-
-        return expenses;
       }
     } catch (err) {
       console.warn('Supabase expenses query fallback:', err);
     }
   }
 
-  if (typeof window !== 'undefined' && userId) {
-    const saved = safeGetItem(getUserStorageKey(userId, `expenses_${tripId}`));
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-  }
+  // Merge: database rows first, then any local-only rows (never drop them).
+  const dbIds = new Set(dbExpenses.map((e) => String(e.id)));
+  const extras = (localExpenses || []).filter((e) => e && !dbIds.has(String(e.id)));
 
-  return [];
+  return [...dbExpenses, ...extras];
 };
 
 /**
@@ -369,10 +363,12 @@ export const createExpenseInDb = async (expenseData, userId) => {
     addedBy: expenseData.addedBy || 'Unknown',
     category: expenseData.category || 'Food',
     excludedMembers: expenseData.excludedMembers || [],
+    userId: isValidUuid(userId) ? userId : null,
     date: new Date().toISOString(),
   };
 
   if (isSupabaseConfigured() && isValidUuid(expenseData.tripId)) {
+    let persisted = false;
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -385,33 +381,62 @@ export const createExpenseInDb = async (expenseData, userId) => {
           category: newExp.category,
           excluded_members: newExp.excludedMembers,
           added_by: newExp.addedBy,
+          user_id: newExp.userId,
         })
         .select()
         .single();
 
-      // If the DB doesn't have a `payers` column yet, retry without it.
-      if (error && error.message && /payers/i.test(`${error.message} ${error.details || ''}`)) {
+      // Retry growing-less columns when the live schema lacks an optional one
+      // (e.g. `payers`, `excluded_members`, `added_by`, or `user_id`). This is
+      // what previously made inserts silently fail → data only lived in
+      // localStorage and "disappeared" after a refresh.
+      if (error) {
+        const msg = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+        let retryPayload = {
+          trip_id: expenseData.tripId,
+          title: newExp.title,
+          amount: newExp.amount,
+          paid_by: newExp.paidBy,
+          category: newExp.category,
+          excluded_members: newExp.excludedMembers,
+        };
+        if (/payers|column.*does not exist|42703/.test(msg)) {
+          delete retryPayload.payers;
+        }
+        if (/added_by|column.*does not exist|42703/.test(msg)) {
+          delete retryPayload.added_by;
+        }
+        if (/user_id|column.*does not exist|42703/.test(msg)) {
+          delete retryPayload.user_id;
+        }
+        if (/excluded_members|column.*does not exist|42703/.test(msg)) {
+          delete retryPayload.excluded_members;
+        }
+
         const retry = await supabase
           .from('expenses')
-          .insert({
-            trip_id: expenseData.tripId,
-            title: newExp.title,
-            amount: newExp.amount,
-            paid_by: newExp.paidBy,
-            category: newExp.category,
-            excluded_members: newExp.excludedMembers,
-            added_by: newExp.addedBy,
-          })
+          .insert(retryPayload)
           .select()
           .single();
         if (!retry.error && retry.data) {
           newExp.id = retry.data.id;
+          persisted = true;
+        } else if (!/payers|payments/.test(msg)) {
+          console.warn('Supabase expense insert retry error:', retry.error);
         }
-      } else if (!error && data) {
+      } else if (data) {
         newExp.id = data.id;
+        persisted = true;
       }
     } catch (err) {
       console.warn('Supabase expense insert fallback:', err);
+    }
+
+    if (!persisted) {
+      // The row never reached the database. Flag it so the UI can say so, and
+      // so the local-cache merge in `fetchTripExpenses` keeps it visible after
+      // a refresh instead of silently dropping it.
+      newExp._localOnly = true;
     }
   }
 
@@ -427,19 +452,62 @@ export const createExpenseInDb = async (expenseData, userId) => {
 };
 
 /**
- * Delete / settle an expense (with trip_id verification for security)
+ * Authorization guard: an expense may only be edited/deleted by its creator
+ * (expenses.user_id) or the trip organizer (trips.created_by). Returns
+ * `{ allowed, reason }`.
+ */
+const getExpensePermission = async (expenseId, tripId, userId) => {
+  if (!isValidUuid(expenseId) || !isValidUuid(tripId) || !isValidUuid(userId)) {
+    return { allowed: false, reason: 'Missing or invalid identifiers' };
+  }
+
+  try {
+    // 1) Expense creator?
+    const { data: exp, error: expErr } = await supabase
+      .from('expenses')
+      .select('user_id')
+      .eq('id', expenseId)
+      .eq('trip_id', tripId)
+      .maybeSingle();
+    if (!expErr && exp && exp.user_id && String(exp.user_id) === String(userId)) {
+      return { allowed: true, reason: 'creator' };
+    }
+
+    // 2) Trip organizer?
+    const { data: trip, error: tripErr } = await supabase
+      .from('trips')
+      .select('created_by')
+      .eq('id', tripId)
+      .maybeSingle();
+    if (!tripErr && trip && trip.created_by && String(trip.created_by) === String(userId)) {
+      return { allowed: true, reason: 'organizer' };
+    }
+  } catch (err) {
+    console.warn('Expense permission check error:', err);
+  }
+
+  return { allowed: false, reason: 'only_creator_or_organizer' };
+};
+
+/**
+ * Delete / settle an expense (scoped by trip_id AND authorized).
+ * The expense may only be deleted by the expense creator or the trip organizer.
  */
 export const deleteExpenseInDb = async (expenseId, tripId, userId) => {
   if (isSupabaseConfigured() && isValidUuid(expenseId) && isValidUuid(tripId)) {
-    try {
-      // IMPORTANT: Filter by trip_id to prevent users from deleting other trips' expenses
-      await supabase
-        .from('expenses')
-        .delete()
-        .eq('id', expenseId)
-        .eq('trip_id', tripId);
-    } catch (err) {
-      console.warn('Supabase delete expense error:', err);
+    const { allowed, reason } = await getExpensePermission(expenseId, tripId, userId);
+    if (!allowed) {
+      console.warn(`Expense delete denied: ${reason}`);
+    } else {
+      try {
+        await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', expenseId)
+          .eq('trip_id', tripId);
+      } catch (err) {
+        console.warn('Supabase delete expense error:', err);
+      }
     }
   }
 
@@ -460,19 +528,24 @@ export const deleteExpenseInDb = async (expenseId, tripId, userId) => {
  */
 export const updateExpenseInDb = async (expenseId, tripId, fields = {}, userId) => {
   if (isSupabaseConfigured() && isValidUuid(expenseId) && isValidUuid(tripId)) {
-    try {
-      const payload = {
-        ...(fields.title !== undefined ? { title: fields.title } : {}),
-        ...(fields.amount !== undefined ? { amount: Number(fields.amount) } : {}),
-        ...(fields.paidBy !== undefined ? { paid_by: fields.paidBy } : {}),
-        ...(fields.payers !== undefined ? { payers: fields.payers } : {}),
-        ...(fields.addedBy !== undefined ? { added_by: fields.addedBy } : {}),
-        ...(fields.category !== undefined ? { category: fields.category } : {}),
-        ...(fields.excludedMembers !== undefined ? { excluded_members: fields.excludedMembers } : {}),
-      };
-      await supabase.from('expenses').update(payload).eq('id', expenseId).eq('trip_id', tripId);
-    } catch (err) {
-      console.warn('Supabase expense update error:', err);
+    const { allowed, reason } = await getExpensePermission(expenseId, tripId, userId);
+    if (!allowed) {
+      console.warn(`Expense update denied: ${reason}`);
+    } else {
+      try {
+        const payload = {
+          ...(fields.title !== undefined ? { title: fields.title } : {}),
+          ...(fields.amount !== undefined ? { amount: Number(fields.amount) } : {}),
+          ...(fields.paidBy !== undefined ? { paid_by: fields.paidBy } : {}),
+          ...(fields.payers !== undefined ? { payers: fields.payers } : {}),
+          ...(fields.addedBy !== undefined ? { added_by: fields.addedBy } : {}),
+          ...(fields.category !== undefined ? { category: fields.category } : {}),
+          ...(fields.excludedMembers !== undefined ? { excluded_members: fields.excludedMembers } : {}),
+        };
+        await supabase.from('expenses').update(payload).eq('id', expenseId).eq('trip_id', tripId);
+      } catch (err) {
+        console.warn('Supabase expense update error:', err);
+      }
     }
   }
 
@@ -682,9 +755,111 @@ export const deleteTripInDb = async (tripId, userId) => {
 };
 
 /**
+ * ── Community announcements ─────────────────────────────────────────────
+ *
+ * The "Post Trip Announcement" form used to silently lose data: the live
+ * Supabase table was missing the `user_id` / `image_url` columns, so EVERY
+ * insert failed with PostgreSQL 42703 ("column announcements.user_id does not
+ * exist") and the post only lived in React state — gone after a refresh.
+ *
+ * Three defences now keep announcements safe:
+ *   1. `insertAnnouncementResilient()` retries without whichever column the
+ *      database reports as missing (schema-drift proof).
+ *   2. Anything that still cannot reach the database is cached in localStorage
+ *      and merged back by `fetchAnnouncementsFromDb()`, so it survives reloads.
+ *   3. The real error is returned to the UI, which shows a friendly message
+ *      instead of pretending the post was published.
+ */
+const ANNOUNCEMENTS_LOCAL_KEY = 'tripwise_announcements_local';
+
+// Columns that may legitimately be absent from an older live schema.
+const ANNOUNCEMENT_OPTIONAL_COLUMNS = [
+  'user_id',
+  'creator_id',
+  'image_url',
+  'creator_avatar',
+  'budget_per_person',
+  'date_range',
+  'tags',
+];
+
+const readLocalAnnouncements = () => {
+  try {
+    const raw = safeGetItem(ANNOUNCEMENTS_LOCAL_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const cacheLocalAnnouncement = (post) => {
+  try {
+    const existing = readLocalAnnouncements().filter((p) => String(p.id) !== String(post.id));
+    safeSetItem(ANNOUNCEMENTS_LOCAL_KEY, [post, ...existing].slice(0, 50));
+  } catch (err) {
+    console.warn('Announcement local cache skipped:', err);
+  }
+};
+
+/** Extracts the offending column name from a PostgREST/Postgres error. */
+const missingColumnFromError = (error) => {
+  const msg = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`;
+  const match =
+    /column\s+"?([a-z_][a-z0-9_]*)"?\s+does not exist/i.exec(msg) ||
+    /Could not find the '([a-z_][a-z0-9_]*)' column/i.exec(msg);
+  return match ? match[1] : null;
+};
+
+// Inserts an announcement, transparently dropping optional columns or broken
+// foreign keys that the live schema rejects.
+async function insertAnnouncementResilient(payload) {
+  const attempt = { ...payload };
+  let lastError = null;
+
+  for (let i = 0; i <= ANNOUNCEMENT_OPTIONAL_COLUMNS.length + 1; i += 1) {
+    const { data, error } = await supabase
+      .from('announcements')
+      .insert(attempt)
+      .select()
+      .single();
+
+    if (!error) return { data, error: null };
+    lastError = error;
+
+    // Schema drift: the DB does not have that column → drop it and retry.
+    const missingColumn = missingColumnFromError(error);
+    if (missingColumn && Object.prototype.hasOwnProperty.call(attempt, missingColumn)) {
+      delete attempt[missingColumn];
+      continue;
+    }
+
+    // creator_id / user_id reference profiles(id). A missing profile row must
+    // never cost us the whole announcement.
+    if (error.code === '23503' || /foreign key/i.test(error.message || '')) {
+      if (Object.prototype.hasOwnProperty.call(attempt, 'user_id')) {
+        delete attempt.user_id;
+        continue;
+      }
+      if (Object.prototype.hasOwnProperty.call(attempt, 'creator_id')) {
+        delete attempt.creator_id;
+        continue;
+      }
+    }
+
+    // Anything else (RLS / network / validation) cannot be fixed by retrying.
+    break;
+  }
+
+  return { data: null, error: lastError };
+}
+
+/**
  * Fetch announcements from Supabase
  */
 export const fetchAnnouncementsFromDb = async () => {
+  const localOnly = readLocalAnnouncements();
+
   if (isSupabaseConfigured()) {
     try {
       const { data, error } = await supabase
@@ -693,68 +868,89 @@ export const fetchAnnouncementsFromDb = async () => {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        return data;
+        // DB rows are the source of truth; local-only posts stay visible until
+        // they successfully sync (or forever, if the schema stays broken).
+        const dbIds = new Set(data.map((row) => String(row.id)));
+        const pending = localOnly.filter((row) => !dbIds.has(String(row.id)));
+        return [...pending, ...data];
       }
+
+      if (error) console.warn('Announcements query failed — showing local cache:', error.message);
     } catch (err) {
       console.warn('Supabase announcements query fallback:', err);
     }
   }
-  return [];
+
+  return localOnly;
 };
+
 
 /**
- * Create announcement in Supabase
+ * Create announcement in Supabase.
+ *
+ * NEVER throws. Returns:
+ *   { data, error: null, localOnly: false }                     → persisted ✅
+ *   { data, error, localOnly: true, message: 'friendly text' }  → cached only
  */
 export const createAnnouncementInDb = async (announcementData, userId) => {
-  if (isSupabaseConfigured()) {
-    try {
-      const payload = {
-        creator_name: announcementData.creator_name,
-        creator_avatar: announcementData.creator_avatar,
-        title: announcementData.title,
-        destination: announcementData.destination,
-        date_range: announcementData.date_range,
-        budget_per_person: announcementData.budget_per_person,
-        description: announcementData.description,
-        contact_info: announcementData.contact_info,
-        tags: announcementData.tags,
-        image_url: announcementData.image_url || null,
-        created_at: new Date().toISOString(),
-      };
+  const localPost = {
+    ...announcementData,
+    created_at: new Date().toISOString(),
+  };
 
-      if (isValidUuid(userId)) {
-        payload.creator_id = userId;
-        payload.user_id = userId;
-      }
-
-      let { data, error } = await supabase
-        .from('announcements')
-        .insert(payload)
-        .select()
-        .single();
-
-      if (error && (payload.user_id || payload.creator_id)) {
-        const safePayload = { ...payload };
-        delete safePayload.user_id;
-        delete safePayload.creator_id;
-        const retry = await supabase
-          .from('announcements')
-          .insert(safePayload)
-          .select()
-          .single();
-        data = retry.data;
-        error = retry.error;
-      }
-
-      if (!error && data) {
-        return data;
-      }
-      console.warn('Failed to insert announcement:', error);
-    } catch (err) {
-      console.warn('Supabase announcement insert error:', err);
-    }
+  if (!isSupabaseConfigured()) {
+    cacheLocalAnnouncement(localPost);
+    return {
+      data: localPost,
+      error: null,
+      localOnly: true,
+      message: 'Supabase is not configured, so this post is only saved on this device.',
+    };
   }
-  // Fallback: keep the object local so the UI still shows it, but flag that
-  // it did not reach the database.
-  return { ...announcementData, _localOnly: true };
+
+  try {
+    const payload = {
+      creator_name: announcementData.creator_name || 'Traveler',
+      creator_avatar: announcementData.creator_avatar || null,
+      title: announcementData.title,
+      destination: announcementData.destination,
+      date_range: announcementData.date_range,
+      budget_per_person: Number(announcementData.budget_per_person) || 0,
+      description: announcementData.description || '',
+      contact_info: announcementData.contact_info,
+      tags: announcementData.tags,
+      image_url: announcementData.image_url || null,
+      created_at: new Date().toISOString(),
+    };
+
+    if (isValidUuid(userId)) {
+      payload.creator_id = userId;
+      payload.user_id = userId;
+    }
+
+    const { data, error } = await insertAnnouncementResilient(payload);
+
+    if (!error && data) {
+      return { data, error: null, localOnly: false };
+    }
+
+    console.error('Announcement insert failed:', error);
+    cacheLocalAnnouncement(localPost);
+    return {
+      data: localPost,
+      error,
+      localOnly: true,
+      message: friendlyError(error, 'We could not save your announcement to the server.'),
+    };
+  } catch (err) {
+    console.error('Supabase announcement insert error:', err);
+    cacheLocalAnnouncement(localPost);
+    return {
+      data: localPost,
+      error: err,
+      localOnly: true,
+      message: friendlyError(err, 'We could not save your announcement to the server.'),
+    };
+  }
 };
+

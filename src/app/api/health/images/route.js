@@ -7,41 +7,32 @@
  *
  *   {
  *     "googleMapsKey": "set" | "missing",
- *     "googleKeySource": "GOOGLE_MAPS_API_KEY" | "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" | null,
+ *     "googleKeySource": "GOOGLE_MAPS_API_KEY" | null,
  *     "unsplashKey": "set" | "missing",
- *     "unsplashKeySource": "...",
+ *     "unsplashKeySource": "UNSPLASH_ACCESS_KEY" | null,
  *     "placesPhotoProxy": "ready" | "missing-key"
  *   }
+ *
+ * Both keys are SERVER-ONLY: they are read here and inside the /api/places/*,
+ * /api/routes and /api/unsplash proxies — never in client code.
  */
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const serverGoogle = process.env.GOOGLE_MAPS_API_KEY || '';
-  const publicGoogle = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-  const googleKey = serverGoogle || publicGoogle;
-
-  const serverUnsplash = process.env.UNSPLASH_ACCESS_KEY || '';
-  const publicUnsplash = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || '';
-  const unsplashKey = serverUnsplash || publicUnsplash;
+  const googleKey = process.env.GOOGLE_MAPS_API_KEY || '';
+  const unsplashKey = process.env.UNSPLASH_ACCESS_KEY || '';
 
   return Response.json(
     {
       googleMapsKey: googleKey ? 'set' : 'missing',
-      googleKeySource: serverGoogle
-        ? 'GOOGLE_MAPS_API_KEY'
-        : publicGoogle
-          ? 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'
-          : null,
-      googleKeyLength: googleKey.length,
+      googleKeySource: googleKey ? 'GOOGLE_MAPS_API_KEY (server-only ✓)' : null,
       unsplashKey: unsplashKey ? 'set' : 'missing',
-      unsplashKeySource: serverUnsplash
-        ? 'UNSPLASH_ACCESS_KEY'
-        : publicUnsplash
-          ? 'NEXT_PUBLIC_UNSPLASH_ACCESS_KEY'
-          : null,
+      unsplashKeySource: unsplashKey ? 'UNSPLASH_ACCESS_KEY (server-only ✓)' : null,
       placesPhotoProxy: googleKey ? 'ready' : 'missing-key',
+      routesProxy: googleKey ? 'ready' : 'missing-key',
+      unsplashProxy: unsplashKey ? 'ready' : 'missing-key',
     },
     { headers: { 'Cache-Control': 'no-store' } }
   );

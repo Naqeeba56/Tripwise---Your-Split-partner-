@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { fetchAnnouncementsFromDb, createAnnouncementInDb } from '@/lib/supabaseDb';
 import { compressToWebP } from '@/lib/imageUtils';
+import Spinner from './Spinner';
 
 const INITIAL_ANNOUNCEMENTS = [
   {
@@ -82,6 +83,10 @@ export default function CommunityAnnouncements({
   const [isCompressing, setIsCompressing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState(null);
+  // Field-level messages rendered directly under each input (never the browser's
+  // native "Please fill out this field." bubble).
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [notice, setNotice] = useState(null); // { type: 'success' | 'warning', text }
 
   React.useEffect(() => {
     const loadAnnouncements = async () => {
@@ -114,15 +119,65 @@ export default function CommunityAnnouncements({
     }
   };
 
+  // Clears a single field error as soon as the traveller starts fixing it.
+  const clearFieldError = (field) =>
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
+  // Human-readable validation. Returns { field: 'message' } — never throws and
+  // never relies on the browser's native constraint validation.
+  const validateAnnouncement = () => {
+    const errors = {};
+    const t = title.trim();
+    const d = destination.trim();
+    const c = contactInfo.trim();
+    const desc = description.trim();
+    const dates = dateRange.trim();
+
+    if (!t) errors.title = 'Add a headline so travellers know what the trip is.';
+    else if (t.length < 3) errors.title = 'The headline needs at least 3 characters.';
+    else if (t.length > 120) errors.title = 'Keep the headline under 120 characters.';
+
+    if (!d) errors.destination = 'Where is the trip going?';
+    else if (d.length > 80) errors.destination = 'Keep the destination under 80 characters.';
+
+    if (!c) errors.contactInfo = 'Add a WhatsApp number, Instagram handle or email so people can reach you.';
+    else if (c.length > 120) errors.contactInfo = 'Keep the contact info under 120 characters.';
+
+    if (budget !== '' && budget != null) {
+      const n = Number(budget);
+      if (!Number.isFinite(n) || n < 0) errors.budget = 'Budget must be a positive number.';
+      else if (n > 1000000) errors.budget = 'That looks too high — please keep it under ₹10,00,000 per person.';
+    }
+
+    if (desc && desc.length < 10) {
+      errors.description = 'Add a little more detail (at least 10 characters) or leave it empty.';
+    }
+
+    if (dates && dates.length < 3) {
+      errors.dateRange = 'Dates look incomplete — try "Oct 2 - Oct 5".';
+    }
+
+    const tagList = tagInput.split(',').map((x) => x.trim()).filter(Boolean);
+    if (tagList.length > 8) errors.tags = 'Please use at most 8 tags.';
+    if (tagList.some((x) => x.length > 20)) errors.tags = 'Each tag must be under 20 characters.';
+
+    return errors;
+  };
+
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     setFormError(null);
-    if (!title.trim() || !destination.trim() || !contactInfo.trim()) {
-      setFormError('Please fill in at least the Title, Destination and Contact Info.');
-      return;
-    }
-    if (description.trim() && description.trim().length < 10) {
-      setFormError('Description should be at least 10 characters if you add one.');
+
+    const errors = validateAnnouncement();
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length) {
+      setFormError(Object.values(errors)[0]);
+      const firstInvalid = ['title', 'destination', 'contactInfo', 'budget', 'description', 'dateRange', 'tags'].find(
+        (key) => errors[key]
+      );
+      const el = typeof document !== 'undefined' && document.getElementById(`announcement-${firstInvalid}`);
+      if (el && el.focus) el.focus();
       return;
     }
 
@@ -143,14 +198,32 @@ export default function CommunityAnnouncements({
       contact_info: contactInfo.trim(),
       tags: tagsArray,
       image_url: image,
-      created_at: 'Just now',
+      created_at: new Date().toISOString(),
     };
 
-    const savedPost = await createAnnouncementInDb(newPost, userProfile?.id);
+    const result = await createAnnouncementInDb(newPost, userProfile?.id);
+    setIsLoading(false);
 
-    setAnnouncements([savedPost, ...announcements]);
+    // The insert failed → keep the modal open and the typed text intact so
+    // nothing is lost, and explain what went wrong in plain language.
+    if (!result || result.localOnly || result.error) {
+      setFormError(
+        result?.message
+          ? `${result.message} Your text is still here — please try again.`
+          : 'We could not save your announcement to the server. Please try again.'
+      );
+      setNotice({
+        type: 'warning',
+        text: 'Your last announcement could not be saved to the server. It is kept on this device until it saves.',
+      });
+      return;
+    }
+
+    setAnnouncements((prev) => [result.data, ...prev]);
+    setNotice({ type: 'success', text: 'Announcement published 🎉' });
     setShowCreateModal(false);
     setFormError(null);
+    setFieldErrors({});
     setTitle('');
     setDestination('');
     setDateRange('');
@@ -159,7 +232,22 @@ export default function CommunityAnnouncements({
     setContactInfo('');
     setTagInput('');
     setImage(null);
-    setIsLoading(false);
+  };
+
+  // Friendly "when" label. Accepts ISO timestamps from the database as well as
+  // the already-human strings used by the seeded demo posts.
+  const formatWhen = (value) => {
+    if (!value || typeof value !== 'string') return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    const mins = Math.round((Date.now() - parsed.getTime()) / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    const days = Math.round(hours / 24);
+    if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+    return parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   const getContactLink = (contact) => {
@@ -209,6 +297,34 @@ export default function CommunityAnnouncements({
         </button>
       </div>
 
+      {/* Success / offline-save feedback for the last post attempt */}
+      <AnimatePresence>
+        {notice && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            role="status"
+            className={`flex items-start gap-2 px-4 py-3 rounded-2xl border text-xs font-medium ${
+              notice.type === 'success'
+                ? 'bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-300'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
+            }`}
+          >
+            <span className="shrink-0">{notice.type === 'success' ? '✅' : '⚠️'}</span>
+            <span className="flex-1">{notice.text}</span>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setNotice(null)}
+              className="shrink-0 hover:opacity-70"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Tag Filter Pills */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
         {allTags.map((tag) => (
@@ -247,19 +363,19 @@ export default function CommunityAnnouncements({
                     />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 font-bold text-xs flex items-center justify-center">
-                      {item.creator_name[0]}
+                      {(item.creator_name || 'T')[0]}
                     </div>
                   )}
                   <div>
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
                       {item.creator_name}
                     </span>
-                    <span className="text-[10px] text-slate-400">{item.created_at}</span>
+                    <span className="text-[10px] text-slate-400">{formatWhen(item.created_at)}</span>
                   </div>
                 </div>
 
                 <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-xl">
-                  ₹{item.budget_per_person.toLocaleString('en-IN')}/head
+                  ₹{Number(item.budget_per_person || 0).toLocaleString('en-IN')}/head
                 </span>
               </div>
 
@@ -348,7 +464,7 @@ export default function CommunityAnnouncements({
                 </h3>
               </div>
 
-              <form onSubmit={handleCreateAnnouncement} className="space-y-3">
+              <form onSubmit={handleCreateAnnouncement} noValidate className="space-y-3">
                 {/* Image Upload */}
                 <div className="flex flex-col items-center justify-center gap-2">
                   <label className="w-full h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden relative shadow-sm">
@@ -370,28 +486,46 @@ export default function CommunityAnnouncements({
                     Announcement Headline
                   </label>
                   <input
+                    id="announcement-title"
                     type="text"
                     placeholder="e.g. Weekend Roadtrip to Gokarna & Dandeli"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                    required
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      clearFieldError('title');
+                    }}
+                    aria-invalid={Boolean(fieldErrors.title)}
+                    className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${
+                      fieldErrors.title ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                    }`}
                   />
+                  {fieldErrors.title && (
+                    <p className="mt-1 text-[10px] font-semibold text-rose-500">{fieldErrors.title}</p>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                       Destination
                     </label>
                     <input
+                      id="announcement-destination"
                       type="text"
                       placeholder="e.g. Gokarna"
                       value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                      required
+                      onChange={(e) => {
+                        setDestination(e.target.value);
+                        clearFieldError('destination');
+                      }}
+                      aria-invalid={Boolean(fieldErrors.destination)}
+                      className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${
+                        fieldErrors.destination ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                      }`}
                     />
+                    {fieldErrors.destination && (
+                      <p className="mt-1 text-[10px] font-semibold text-rose-500">{fieldErrors.destination}</p>
+                    )}
                   </div>
 
                   <div>
@@ -399,12 +533,24 @@ export default function CommunityAnnouncements({
                       Budget / Person (₹)
                     </label>
                     <input
+                      id="announcement-budget"
                       type="number"
+                      inputMode="numeric"
+                      min="0"
                       placeholder="e.g. 5000"
                       value={budget}
-                      onChange={(e) => setBudget(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                      onChange={(e) => {
+                        setBudget(e.target.value);
+                        clearFieldError('budget');
+                      }}
+                      aria-invalid={Boolean(fieldErrors.budget)}
+                      className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${
+                        fieldErrors.budget ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                      }`}
                     />
+                    {fieldErrors.budget && (
+                      <p className="mt-1 text-[10px] font-semibold text-rose-500">{fieldErrors.budget}</p>
+                    )}
                   </div>
                 </div>
 
@@ -413,12 +559,22 @@ export default function CommunityAnnouncements({
                     Dates / Schedule
                   </label>
                   <input
+                    id="announcement-dateRange"
                     type="text"
                     placeholder="e.g. Oct 2 - Oct 5 (Long Weekend)"
                     value={dateRange}
-                    onChange={(e) => setDateRange(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                    onChange={(e) => {
+                      setDateRange(e.target.value);
+                      clearFieldError('dateRange');
+                    }}
+                    aria-invalid={Boolean(fieldErrors.dateRange)}
+                    className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${
+                      fieldErrors.dateRange ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                    }`}
                   />
+                  {fieldErrors.dateRange && (
+                    <p className="mt-1 text-[10px] font-semibold text-rose-500">{fieldErrors.dateRange}</p>
+                  )}
                 </div>
 
                 <div>
@@ -426,13 +582,22 @@ export default function CommunityAnnouncements({
                     Trip Details & Plans
                   </label>
                   <textarea
+                    id="announcement-description"
                     rows={3}
                     placeholder="Describe itinerary, spots, and traveler vibe..."
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                    required
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      clearFieldError('description');
+                    }}
+                    aria-invalid={Boolean(fieldErrors.description)}
+                    className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${
+                      fieldErrors.description ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                    }`}
                   />
+                  {fieldErrors.description && (
+                    <p className="mt-1 text-[10px] font-semibold text-rose-500">{fieldErrors.description}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -441,13 +606,22 @@ export default function CommunityAnnouncements({
                       Contact Info / Handle
                     </label>
                     <input
+                      id="announcement-contactInfo"
                       type="text"
                       placeholder="WhatsApp, IG, or Email"
                       value={contactInfo}
-                      onChange={(e) => setContactInfo(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                      required
+                      onChange={(e) => {
+                        setContactInfo(e.target.value);
+                        clearFieldError('contactInfo');
+                      }}
+                      aria-invalid={Boolean(fieldErrors.contactInfo)}
+                      className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${
+                        fieldErrors.contactInfo ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                      }`}
                     />
+                    {fieldErrors.contactInfo && (
+                      <p className="mt-1 text-[10px] font-semibold text-rose-500">{fieldErrors.contactInfo}</p>
+                    )}
                   </div>
 
                   <div>
@@ -455,19 +629,33 @@ export default function CommunityAnnouncements({
                       Tags (Comma separated)
                     </label>
                     <input
+                      id="announcement-tags"
                       type="text"
                       placeholder="Beaches, Trek, Roadtrip"
                       value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
+                      onChange={(e) => {
+                        setTagInput(e.target.value);
+                        clearFieldError('tags');
+                      }}
+                      aria-invalid={Boolean(fieldErrors.tags)}
+                      className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 ${
+                        fieldErrors.tags ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                      }`}
                     />
+                    {fieldErrors.tags && (
+                      <p className="mt-1 text-[10px] font-semibold text-rose-500">{fieldErrors.tags}</p>
+                    )}
                   </div>
                 </div>
 
                 {formError && (
-                  <p className="text-[11px] font-medium text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2">
-                    {formError}
-                  </p>
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 px-3 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-medium"
+                  >
+                    <span className="shrink-0">⚠️</span>
+                    <span className="flex-1">{formError}</span>
+                  </div>
                 )}
 
                 <div className="pt-2 flex gap-3">
@@ -481,10 +669,17 @@ export default function CommunityAnnouncements({
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/20"
+                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-3 rounded-2xl text-xs transition shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 disabled:opacity-60"
                     disabled={isLoading || isCompressing}
                   >
-                    {isLoading ? 'Publishing...' : 'Publish Announcement'}
+                    {isLoading ? (
+                      <>
+                        <Spinner size={14} />
+                        <span>Publishing...</span>
+                      </>
+                    ) : (
+                      'Publish Announcement'
+                    )}
                   </button>
                 </div>
               </form>

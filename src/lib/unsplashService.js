@@ -7,14 +7,15 @@
  *   1. Go to https://unsplash.com/developers
  *   2. Create a new application (free)
  *   3. Copy your "Access Key"
- *   4. Add to .env.local:  NEXT_PUBLIC_UNSPLASH_ACCESS_KEY=your_key_here
+ *   4. Add to .env.local:  UNSPLASH_ACCESS_KEY=your_key_here   (server-only!
+ *      The browser NEVER sees this key — all Unsplash calls go through the
+ *      server-side /api/unsplash proxy route who holds it secretly.)
  *
  * If the key is missing, all functions return null/[] gracefully so the app
  * falls back to curated images.unsplash.com photo IDs without crashing.
  */
 
-const UNSPLASH_KEY  = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || process.env.UNSPLASH_ACCESS_KEY || '';
-// Use local API proxy instead of direct Unsplash API to avoid CORS and key exposure on Vercel
+// All Unsplash requests are proxied server-side — no key is ever read here.
 const API_BASE = '/api/unsplash';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -129,11 +130,11 @@ export const batchGetGemPhotos = async (gemNames, destinationName = '') => {
  * Call it lazily (fire-and-forget) when the image is shown.
  */
 export const triggerAttribution = async (downloadUrl) => {
-  if (!isConfigured() || !downloadUrl) return;
+  if (!downloadUrl) return;
   try {
-    await fetch(downloadUrl, {
-      headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` },
-    });
+    // Attribution is a fire-and-forget GET. The key stays on the server via
+    // the proxy route, so we simply touch the URL (no in-browser secret).
+    await fetch(downloadUrl);
   } catch {
     // Non-critical — ignore errors
   }

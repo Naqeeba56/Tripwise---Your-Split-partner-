@@ -114,7 +114,7 @@ export default function JoinTripModal({
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             {/* Avatar WebP Upload */}
             <div className="flex flex-col items-center justify-center gap-2">
               <label className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-teal-500 transition overflow-hidden relative shadow-sm">

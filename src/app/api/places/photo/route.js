@@ -12,7 +12,7 @@
  * Reading the key here (at request time, server side) means:
  *   • the key never ships to the browser (better security), and
  *   • a plain `GOOGLE_MAPS_API_KEY` env var on the host is enough — no
- *     NEXT_PUBLIC_ rebuild gymnastics.
+ *     rebuild gymnastics.
  *
  * We stream the bytes back instead of 302-redirecting so the key is never
  * exposed and the response is edge-cacheable.
@@ -23,7 +23,6 @@ export const dynamic = 'force-dynamic';
 
 const getKey = () =>
   process.env.GOOGLE_MAPS_API_KEY ||
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
   '';
 
 const clamp = (raw, fallback, max) => {
@@ -43,7 +42,7 @@ export async function GET(request) {
   const key = getKey();
   if (!key) {
     return new Response(
-      'Google Maps API key is not configured on the server. Set GOOGLE_MAPS_API_KEY (or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).',
+      'Google Maps API key is not configured on the server. Set GOOGLE_MAPS_API_KEY.',
       { status: 503 }
     );
   }

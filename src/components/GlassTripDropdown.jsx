@@ -34,7 +34,7 @@ export default function GlassTripDropdown({
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="group flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 hover:border-teal-500/40 dark:hover:border-teal-400/40 shadow-sm hover:shadow-md transition-all duration-300 focus:outline-none max-w-[130px] sm:max-w-xs"
+        className="group flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 hover:border-teal-500/40 dark:hover:border-teal-400/40 shadow-sm hover:shadow-md transition-all duration-300 focus:outline-none w-full min-w-0"
       >
         <div className="flex items-center gap-1.5 min-w-0">
           {activeTrip?.image_url || activeTrip?.image ? (
@@ -65,7 +65,7 @@ export default function GlassTripDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="absolute left-0 mt-2 w-64 sm:w-72 origin-top-left rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 overflow-hidden"
+            className="absolute left-0 mt-2 w-[min(18rem,calc(100vw-1.5rem))] sm:w-72 origin-top-left rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 overflow-hidden"
           >
             <div className="px-3.5 py-2 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between">
               <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">

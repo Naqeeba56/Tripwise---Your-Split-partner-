@@ -29,7 +29,7 @@ export const viewport = {
 };
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://tripwise.app'),
+  metadataBase: new URL(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://tripwise.app'),
   title: {
     default: 'Tripwise — Smart Group Expense Splitter & Instant UPI Settlement',
     template: '%s | Tripwise',

@@ -2,7 +2,7 @@
  * GET /api/places/autocomplete?q=goa
  *
  * Server-side proxy for Places Autocomplete (New). Keeps the Google key off
- * the client and works even when no NEXT_PUBLIC_ key was present at build time.
+ * the client entirely: the key is read from GOOGLE_MAPS_API_KEY at request time.
  */
 
 export const runtime = 'nodejs';
@@ -10,7 +10,6 @@ export const dynamic = 'force-dynamic';
 
 const getKey = () =>
   process.env.GOOGLE_MAPS_API_KEY ||
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
   '';
 
 export async function GET(request) {

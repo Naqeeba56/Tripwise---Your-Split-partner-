@@ -95,19 +95,23 @@ export default function Header({
     <>
       {/* Top Header Bar */}
       <header className="sticky top-0 z-40 backdrop-blur-2xl bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors shadow-sm">
-        <div className="w-full px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
+        <div className="w-full px-2.5 sm:px-6 lg:px-8 py-2 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4">
           {/* Brand Logo & Trip Selector */}
-          <div className="flex items-center space-x-2 sm:space-x-3.5 min-w-0">
-            <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-2.5 rounded-2xl shadow-lg shadow-teal-500/20 text-slate-950 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
+            <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 sm:p-2.5 rounded-2xl shadow-lg shadow-teal-500/20 text-slate-950 shrink-0">
               <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2]" />
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <h1 className="text-lg sm:text-2xl md:text-3xl font-display bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-600 dark:from-teal-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent truncate leading-tight flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+              {/* Wordmark is hidden on very narrow phones so the trip selector
+                  and the action icons can never collide. */}
+              <h1 className="hidden min-[420px]:block text-lg sm:text-2xl md:text-3xl font-display bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-600 dark:from-teal-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent truncate leading-tight shrink-0">
                 Tripwise
               </h1>
 
-              <div className="min-w-0">
+              {/* The only flexible item in the row: it truncates instead of
+                  pushing the icon cluster off-screen. */}
+              <div className="min-w-0 flex-1 max-w-[220px] sm:max-w-sm">
                 <GlassTripDropdown
                   trips={trips}
                   activeTripId={activeTripId}
@@ -120,11 +124,12 @@ export default function Header({
             </div>
           </div>
 
-          {/* Right Controls */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2.5 flex-shrink-0">
+          {/* Right Controls — uniform 8x8 tap targets on phones so nothing
+              overlaps; labels appear from `md` upwards. */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <button
               onClick={onOpenInviteModal}
-              className="flex items-center justify-center gap-1 w-9 h-9 sm:w-auto sm:h-auto sm:px-3.5 sm:py-2 shrink-0 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/40 text-slate-700 dark:text-slate-300 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm"
+              className="flex items-center justify-center gap-1 w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-2 shrink-0 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/40 text-slate-700 dark:text-slate-300 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm"
               title="Invite Friends"
               aria-label="Invite Friends"
             >
@@ -134,7 +139,7 @@ export default function Header({
 
             {userProfile ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded-xl sm:rounded-2xl">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-xl sm:rounded-2xl">
                   {userProfile.avatar || userProfile.photoURL ? (
                     <img
                       src={userProfile.avatar || userProfile.photoURL}
@@ -153,8 +158,9 @@ export default function Header({
                 </div>
                 <button
                   onClick={onSignOut}
-                  className="flex items-center gap-1 p-2 sm:px-2.5 sm:py-1.5 bg-rose-500/10 border border-rose-500/25 text-rose-500 hover:bg-rose-500/20 rounded-xl text-xs font-medium transition shadow-sm"
+                  className="flex items-center justify-center gap-1 w-8 h-8 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1.5 bg-rose-500/10 border border-rose-500/25 text-rose-500 hover:bg-rose-500/20 rounded-xl text-xs font-medium transition shadow-sm shrink-0"
                   title="Sign Out"
+                  aria-label="Sign Out"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span className="hidden md:inline">Sign Out</span>
@@ -173,8 +179,9 @@ export default function Header({
             {userProfile && isAdminEmail(userProfile.email) && (
                 <a
                   href="/admin"
-                  className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 p-2 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm"
+                  className="flex items-center justify-center gap-1 w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-2 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm shrink-0"
                   title="Admin Dashboard"
+                  aria-label="Admin Dashboard"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 stroke-[2]" />
                   <span className="hidden md:inline">Admin</span>
@@ -183,8 +190,9 @@ export default function Header({
 
             <button
               onClick={onOpenNewTripModal}
-              className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 p-2 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm"
+              className="flex items-center justify-center gap-1 w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-2 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm shrink-0"
               title="Create New Trip"
+              aria-label="Create New Trip"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2]" />
               <span className="hidden md:inline">New Trip</span>
@@ -192,7 +200,7 @@ export default function Header({
 
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+              className="flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto p-0 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shrink-0"
               aria-label="Toggle dark mode"
             >
               {darkMode ? (

@@ -11,7 +11,9 @@ export default function ExpenseFeed({
   onEditExpense,
   onDeleteExpense,
   currentUserName = '',
+  currentUserId = '',
   tripCreatorName = '',
+  tripCreatorId = '',
   getAvatarForMember,
 }) {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -114,7 +116,9 @@ export default function ExpenseFeed({
               onEditExpense={onEditExpense}
               onDeleteExpense={onDeleteExpense}
               currentUserName={currentUserName}
+              currentUserId={currentUserId}
               tripCreatorName={tripCreatorName}
+              tripCreatorId={tripCreatorId}
               getAvatarForMember={getAvatarForMember}
             />
           ))

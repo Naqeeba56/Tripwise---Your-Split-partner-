@@ -61,10 +61,11 @@ const main = async () => {
   }
 
   console.log('\n--- RESULTS ---');
-  console.log('Google key present in bundle :', googleKey ? '✅ YES → ' + googleKey.key.slice(0, 12) + '… (' + googleKey.chunk + ')' : '❌ NO  → NEXT_PUBLIC_GOOGLE_MAPS_API_KEY was NOT set on Vercel at build time');
-  console.log('Places API referenced        :', placesRef ? '✅ yes' : '❌ no');
-  console.log('Unsplash API referenced      :', unsplashRef ? '✅ yes' : '❌ no');
+  console.log('Google key present in bundle :', googleKey ? '❌ LEAK → ' + googleKey.key.slice(0, 12) + '… (' + googleKey.chunk + ')' : '✅ NO — key stays server-side (GOOGLE_MAPS_API_KEY)');
+  console.log('Places API referenced        :', placesRef ? '✅ yes (via /api/places proxy)' : '❌ no');
+  console.log('Unsplash API referenced      :', unsplashRef ? '❌ LEAK — api.unsplash.com called from the browser' : '✅ no (server proxy only)');
   console.log('files w/ NEXT_PUBLIC_ tokens :', emptyEnvLiterals);
+  console.log('Server key health            :', BASE + '/api/health/images');
 
   if (googleKey) {
     // Try the exact photo endpoint shape the app builds

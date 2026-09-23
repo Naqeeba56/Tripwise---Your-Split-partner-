@@ -3,9 +3,8 @@
  *
  * Server-side proxy for the Unsplash Search API.
  *
- * Reads `UNSPLASH_ACCESS_KEY` (server-only, preferred) or falls back to
- * `NEXT_PUBLIC_UNSPLASH_ACCESS_KEY`. Reading it at request time avoids the
- * build-time inlining trap that breaks real-time photos in production.
+ * Reads the server-only `UNSPLASH_ACCESS_KEY` at request time, so the key is
+ * never inlined into the browser bundle and no rebuild is needed on the host.
  */
 
 export const runtime = 'nodejs';
@@ -13,7 +12,6 @@ export const dynamic = 'force-dynamic';
 
 const getKey = () =>
   process.env.UNSPLASH_ACCESS_KEY ||
-  process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY ||
   '';
 
 export async function GET(request) {

@@ -12,7 +12,9 @@ export default function ExpenseCard({
   onEditExpense,
   onDeleteExpense,
   currentUserName = '',
+  currentUserId = '',
   tripCreatorName = '',
+  tripCreatorId = '',
   getAvatarForMember,
 }) {
   const [balance, setBalance] = useState(expense.amount);
@@ -76,12 +78,19 @@ export default function ExpenseCard({
       : null;
   const payerNames = payers ? payers.map((p) => p.name) : [paidBy];
 
-  // Only the payer(s) of this expense, the trip creator, or the user who added it may edit / delete it.
+  // Only the expense creator, the trip organizer, or (for legacy rows) the
+  // payer(s) / adder shown on the card may edit or delete it.
+  const isCreator = !!currentUserId && !!expense.userId && String(expense.userId) === String(currentUserId);
+  const isOrganizer = !!currentUserId && !!tripCreatorId && String(tripCreatorId) === String(currentUserId);
   const canManage =
-    !!currentUserName &&
-    (currentUserName === tripCreatorName ||
-      currentUserName === expense.addedBy ||
-      payerNames.some((n) => currentUserName === n));
+    isCreator ||
+    isOrganizer ||
+    (!!currentUserName &&
+      (currentUserName === tripCreatorName ||
+        currentUserName === expense.addedBy ||
+        (Array.isArray(expense.payers) && expense.payers.length > 1
+          ? expense.payers.some((p) => currentUserName === (p.name || p))
+          : currentUserName === (expense.paidBy || expense.payer))));
 
   return (
     <div

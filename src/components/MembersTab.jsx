@@ -218,6 +218,7 @@ export default function MembersTab({
         {/* Add Member Form */}
         <form
           onSubmit={handleFormSubmit}
+          noValidate
           className="space-y-3 sm:space-y-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60"
         >
           <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -256,9 +257,11 @@ export default function MembersTab({
                   type="text"
                   placeholder="Member name (e.g. Rahul or Aarav)..."
                   value={newMemberName}
-                  onChange={(e) => setNewMemberName(e.target.value)}
+                  onChange={(e) => {
+                    setNewMemberName(e.target.value);
+                    if (error && /name/i.test(error)) setError(null);
+                  }}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500"
-                  required
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

@@ -1,50 +1,30 @@
 /**
  * Tripwise Google Places API (New) — Service Layer
  * ─────────────────────────────────────────────────
- * All APIs confirmed LIVE with current key (tested Sept 2026):
- *   ✅ Places Autocomplete (New)
- *   ✅ Places Text Search (New)
- *   ✅ Place Details (New)
- *   ✅ Place Photos  → skipHttpRedirect=true gives stable lh3.googleusercontent.com URLs
- *   ✅ Routes API    (in routesService.js)
- *   ❌ Maps JS API   (needs enabling in Cloud Console)
- *   ❌ Maps Static   (needs enabling in Cloud Console)
+ * SECURITY: This module is CLIENT-SIDE but NEVER contains, reads, or embeds
+ * the Google API key. Every request is proxied through a server-side route
+ * (/api/places/*) that holds `GOOGLE_MAPS_API_KEY` secretly on the server.
+ *
+ * Keeping the key server-side means it is never inlined into the browser
+ * bundle, so `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is no longer required (or
+ * exposed) at build time.
+ *
+ * All function signatures below are unchanged from the previous version so
+ * existing callers (BudgetEstimator, page.js, …) keep working.
  */
-
-const GOOGLE_API_KEY  = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-const PLACES_BASE     = 'https://places.googleapis.com/v1/places';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-const placesPost = async (endpoint, body, fieldMask) => {
-  const res = await fetch(`${PLACES_BASE}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type':   'application/json',
-      'X-Goog-Api-Key': GOOGLE_API_KEY,
-      'X-Goog-FieldMask': fieldMask,
-    },
-    body: JSON.stringify(body),
+const proxyGet = async (path, params = {}) => {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && String(v).length > 0) qs.set(k, String(v));
   });
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetch(`/api/places/${path}${suffix}`, { cache: 'no-store' });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${res.status}`);
-  }
-  return res.json();
-};
-
-const placesGet = async (path, fieldMask) => {
-  const res = await fetch(`${PLACES_BASE}/${path}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type':   'application/json',
-      'X-Goog-Api-Key': GOOGLE_API_KEY,
-      'X-Goog-FieldMask': fieldMask,
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    throw new Error(err?.error || `HTTP ${res.status}`);
   }
   return res.json();
 };
@@ -55,11 +35,7 @@ const placesGet = async (path, fieldMask) => {
 export const fetchPlaceAutocomplete = async (inputQuery) => {
   if (!inputQuery || inputQuery.trim().length < 2) return [];
   try {
-    const data = await placesPost(':autocomplete', {
-      input: inputQuery,
-      // No includedPrimaryTypes — so "Kalu Waterfall", "Lonavala", "Taj Mahal" all work
-      languageCode: 'en',
-    }, '*');
+    const data = await proxyGet('autocomplete', { q: inputQuery });
     return data.suggestions || [];
   } catch (err) {
     console.warn('[Places Autocomplete]', err.message);
@@ -72,73 +48,45 @@ export const fetchPlaceAutocomplete = async (inputQuery) => {
 export const fetchPlaceDetails = async (placeId) => {
   if (!placeId) return null;
   try {
-    return await placesGet(placeId, [
-      'id', 'displayName', 'formattedAddress', 'location',
-      'photos', 'rating', 'userRatingCount',
-      'editorialSummary', 'types', 'googleMapsUri', 'websiteUri',
-    ].join(','));
+    return await proxyGet('details', { id: placeId });
   } catch (err) {
     console.warn('[Place Details]', err.message);
     return null;
   }
 };
 
-// ─── 3. Photo URL — skipHttpRedirect=true returns JSON with photoUri ──────────
-// photoUri is a stable lh3.googleusercontent.com URL that works in <img> tags.
+// ─── 3. Photo URL — server proxy keeps the key secret ────────────────────────
+// The /api/places/photo route streams the image bytes with the key applied
+// server-side, so the browser just uses a key-less relative URL. This works
+// directly in <img src>, is edge-cacheable, and never exposes the key.
 
-// The photo `name` returned by the Places (New) API already begins with
-// "places/<id>/photos/<photo>". PLACES_BASE also ends in "/places", so we must
-// NOT concatenate them naively or we get "…/v1/places/places/…" → 404 (which is
-// why no place photos were ever loading). Build the media URL correctly here.
-const buildPhotoMediaUrl = (photoName, maxH, maxW, { skipHttpRedirect = false } = {}) => {
+export const getPlacePhotoUrl = (photoName, maxH = 800, maxW = 1200) => {
   if (!photoName) return null;
-  const name = photoName.startsWith('places/')
-    ? photoName
-    : `places/${photoName}`;
-  const v1Base = PLACES_BASE.replace(/\/places$/, ''); // → https://places.googleapis.com/v1
-  let url = `${v1Base}/${name}/media?maxHeightPx=${maxH}&maxWidthPx=${maxW}&key=${GOOGLE_API_KEY}`;
-  if (skipHttpRedirect) url += '&skipHttpRedirect=true';
-  return url;
+  const name = photoName.startsWith('places/') ? photoName : `places/${photoName}`;
+  return `/api/places/photo?name=${encodeURIComponent(name)}&w=${maxW}&h=${maxH}`;
 };
 
 export const resolvePhotoUrl = async (photoName, maxH = 800, maxW = 1200) => {
-  if (!photoName) return null;
-  const mediaUrl = buildPhotoMediaUrl(photoName, maxH, maxW, { skipHttpRedirect: true });
-  if (!mediaUrl) return null;
-  try {
-    const res = await fetch(mediaUrl);
-    if (!res.ok) return null;
-    const data = await res.json();
-    // Some responses include a photoUri pointing at lh3.googleusercontent.com;
-    // fall back to a Google redirect URL if it isn't present.
-    if (data?.photoUri) return data.photoUri;
-    const redirected = buildPhotoMediaUrl(photoName, maxH, maxW);
-    return redirected || null;
-  } catch {
-    return null;
-  }
+  // The proxy URL is stable and key-less — treat it as the resolved URL.
+  return getPlacePhotoUrl(photoName, maxH, maxW);
 };
-
-// Synchronous URL builder — browser follows the redirect automatically.
-// Use this for <img src> when you don't need to pre-resolve the URL.
-export const getPlacePhotoUrl = (photoName, maxH = 800, maxW = 1200) => {
-  // skipHttpRedirect=false (default) → browser gets redirect → final image
-  return buildPhotoMediaUrl(photoName, maxH, maxW);
-};
-
 // ─── 4. Text Search — any free-text query ────────────────────────────────────
 
 export const fetchTextSearch = async (textQuery, locationBias = null, maxResults = 10) => {
   try {
-    const body = { textQuery, maxResultCount: maxResults, languageCode: 'en' };
-    if (locationBias) body.locationBias = locationBias;
-    const data = await placesPost(':searchText', body, [
-      'places.id', 'places.displayName', 'places.formattedAddress',
-      'places.location', 'places.photos', 'places.rating',
-      'places.userRatingCount', 'places.editorialSummary',
-      'places.types', 'places.googleMapsUri', 'places.websiteUri',
-      'places.priceLevel',
-    ].join(','));
+    let lat, lng, radius;
+    if (locationBias?.circle?.center) {
+      lat = locationBias.circle.center.latitude;
+      lng = locationBias.circle.center.longitude;
+      radius = locationBias.circle.radius;
+    }
+    const data = await proxyGet('textsearch', {
+      q: textQuery,
+      lat,
+      lng,
+      radius,
+      max: maxResults,
+    });
     return data.places || [];
   } catch (err) {
     console.warn('[Text Search]', err.message);
@@ -150,27 +98,18 @@ export const fetchTextSearch = async (textQuery, locationBias = null, maxResults
 
 export const fetchNearbyPlaces = async (lat, lng, radiusMeters = 10000, includedTypes = []) => {
   try {
-    const data = await placesPost(':searchNearby', {
-      includedTypes: includedTypes.length ? includedTypes
-        : ['tourist_attraction', 'historical_landmark', 'museum', 'park', 'natural_feature'],
-      maxResultCount: 12,
-      locationRestriction: {
-        circle: { center: { latitude: lat, longitude: lng }, radius: radiusMeters },
-      },
-      rankPreference: 'POPULARITY',
-    }, [
-      'places.id', 'places.displayName', 'places.formattedAddress',
-      'places.location', 'places.rating', 'places.userRatingCount',
-      'places.types', 'places.photos', 'places.googleMapsUri',
-      'places.editorialSummary',
-    ].join(','));
+    const data = await proxyGet('nearby', {
+      lat,
+      lng,
+      radius: radiusMeters,
+      types: includedTypes.length ? includedTypes.join(',') : undefined,
+    });
     return data.places || [];
   } catch (err) {
     console.warn('[Nearby Search]', err.message);
     return [];
   }
 };
-
 // ─── 6. Geocode a place name → { placeId, lat, lng, name, address, photos, summary } ──
 
 export const geocodePlace = async (query) => {
@@ -236,7 +175,6 @@ export const fetchHotelsNearDestination = async (destinationName, lat, lng) => {
 };
 
 // ─── 9. Resolve first photo of a place to a usable image URL ─────────────────
-// Returns a direct lh3.googleusercontent.com URL (resolved via skipHttpRedirect).
 
 export const getFirstPhotoUrl = async (place, maxH = 600, maxW = 900) => {
   const photoName = place?.photos?.[0]?.name;

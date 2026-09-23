@@ -163,10 +163,16 @@ export default function CurrencyConverter() {
         </div>
       </div>
 
-      {/* Main converter card */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-900 shadow-xl">
-        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-gradient-to-br from-teal-400/30 to-emerald-300/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-16 w-60 h-60 rounded-full bg-gradient-to-tr from-violet-500/20 to-fuchsia-400/10 blur-3xl pointer-events-none" />
+      {/* Main converter card.
+          NOTE: the decorative glows live in their own clipped layer. The card
+          itself must NOT use `overflow-hidden`, otherwise the currency dropdown
+          gets cut off at the card edge (it looked like the list was
+          "overlapping" the result card). */}
+      <div className="relative rounded-3xl border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-900 shadow-xl">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-gradient-to-br from-teal-400/30 to-emerald-300/20 blur-3xl" />
+          <div className="absolute -bottom-20 -left-16 w-60 h-60 rounded-full bg-gradient-to-tr from-violet-500/20 to-fuchsia-400/10 blur-3xl" />
+        </div>
 
         <div className="relative p-5 sm:p-8 space-y-6">
           {/* Amount + From currency */}
@@ -299,7 +305,7 @@ function CurrencySelect({ value, onChange, tone }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className={`relative ${open ? 'z-[70]' : ''}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -318,14 +324,14 @@ function CurrencySelect({ value, onChange, tone }) {
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
             <motion.div
               role="listbox"
               initial={{ opacity: 0, y: 6, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.96 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-full mt-2 z-40 w-64 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl p-1.5"
+              className="absolute right-0 top-full mt-2 z-[70] w-[min(17rem,calc(100vw-2.5rem))] sm:w-64 max-h-64 sm:max-h-72 overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl p-1.5"
             >
               {CURRENCIES.map((c) => {
                 const active = c.code === value;

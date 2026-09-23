@@ -1,17 +1,15 @@
 /**
  * Tripwise Routes API Service
  * ────────────────────────────────────────────────────────────────
- * Routes API v2 (computeRoutes) — CONFIRMED LIVE with current key.
- * Mumbai→Lonavala: 83,606m / 1h 46m (verified Sept 2026).
+ * SECURITY: This module is CLIENT-SIDE but never reads/embeds the Google
+ * key. Routing requests are proxied through the server-side `/api/routes`
+ * route, which holds `GOOGLE_MAPS_API_KEY` secretly on the server.
  *
  * Falls back to offline distance table (fareEngine.getDistanceKm)
  * only when the API call fails (network error or quota exceeded).
  */
 
-const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-const ROUTES_URL     = 'https://routes.googleapis.com/directions/v2:computeRoutes';
-
-// Routes API travel-mode map
+// Routes API travel-mode map (used for cost derivation + offline reasoning)
 const MODE_MAP = {
   road:      'DRIVE',
   cab:       'DRIVE',
@@ -28,59 +26,28 @@ export const computeRoute = async ({ originLat, originLng, destLat, destLng, tra
   const apiMode = MODE_MAP[travelMode] || 'DRIVE';
 
   try {
-    const body = {
-      origin:      { location: { latLng: { latitude: originLat,  longitude: originLng } } },
-      destination: { location: { latLng: { latitude: destLat,    longitude: destLng   } } },
-      travelMode: apiMode,
-      computeAlternativeRoutes: false,
-      languageCode: 'en-IN',
-      units: 'METRIC',
-    };
-
-    // Routing preference only supported for DRIVE
-    if (apiMode === 'DRIVE') body.routingPreference = 'TRAFFIC_AWARE';
-
-    const res = await fetch(ROUTES_URL, {
+    const res = await fetch('/api/routes', {
       method: 'POST',
-      headers: {
-        'Content-Type':   'application/json',
-        'X-Goog-Api-Key': GOOGLE_API_KEY,
-        'X-Goog-FieldMask': [
-          'routes.distanceMeters',
-          'routes.duration',
-          'routes.staticDuration',
-          'routes.polyline.encodedPolyline',
-        ].join(','),
-      },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        originLat,
+        originLng,
+        destLat,
+        destLng,
+        travelMode,
+      }),
+      cache: 'no-store',
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      console.warn('[Routes API]', err?.error?.message || `HTTP ${res.status}`);
+      console.warn('[Routes API]', err?.error || `HTTP ${res.status}`);
       return null;
     }
 
     const data = await res.json();
-    if (data.error) { console.warn('[Routes API]', data.error.message); return null; }
-
-    const route = data.routes?.[0];
-    if (!route) return null;
-
-    const distanceMeters  = route.distanceMeters || 0;
-    const distanceKm      = Math.round(distanceMeters / 1000);
-    const durationRaw     = route.duration || route.staticDuration || '0s';
-    const durationSeconds = parseInt(durationRaw.replace('s', ''), 10) || 0;
-
-    return {
-      distanceMeters,
-      distanceKm,
-      durationSeconds,
-      durationText:    formatDuration(durationSeconds),
-      distanceText:    `${distanceKm} km`,
-      encodedPolyline: route.polyline?.encodedPolyline || null,
-      source:          'routes_api',
-    };
+    if (data.error) { console.warn('[Routes API]', data.error); return null; }
+    return data;
   } catch (err) {
     console.warn('[Routes API] network error:', err.message);
     return null;

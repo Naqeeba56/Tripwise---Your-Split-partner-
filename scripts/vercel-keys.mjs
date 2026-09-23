@@ -69,12 +69,15 @@ const main = async () => {
   console.log('── RESULTS ─────────────────────────────────');
   console.log('supabase.co string present        :', supabase);
   console.log('chunks referencing places.googleapis:', placesRef);
-  console.log('Google Maps key baked at build    :', googleKey ? `YES (${googleKey.chunk})` : 'NO  <-- this is the break');
-  console.log('Unsplash key baked at build       :', unsplashKey ? `YES (${unsplashKey})` : 'NO');
+  console.log('Google Maps key leaked to bundle  :', googleKey ? `❌ YES (${googleKey.chunk})` : '✅ NO (server-only)');
+  console.log('Unsplash key leaked to bundle     :', unsplashKey ? `❌ YES (${unsplashKey})` : '✅ NO (server-only)');
 
-  if (!googleKey) {
-    console.log('\n>>> NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is MISSING on Vercel.');
-    console.log('>>> Add it in Vercel > Project > Settings > Environment Variables, then REDEPLOY.');
+  if (googleKey) {
+    console.log('\n>>> The Google Maps key is INLINED INTO THE BROWSER BUNDLE.');
+    console.log('>>> Remove NEXT_PUBLIC_GOOGLE_MAPS_API_KEY from Vercel and use GOOGLE_MAPS_API_KEY instead, then REDEPLOY.');
+  } else {
+    console.log('\n>>> Keys are not shipped to the browser. ✅');
+    console.log('>>> Confirm the server can still see them: GET /api/health/images');
   }
 
   // 4. Also confirm the app actually renders (not a build error page).

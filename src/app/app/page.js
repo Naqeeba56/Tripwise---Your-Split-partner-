@@ -32,6 +32,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ConfirmModal from '@/components/ConfirmModal';
 import Toast from '@/components/Toast';
+import Spinner from '@/components/Spinner';
 import ExpenseCard from '@/components/ExpenseCard';
 import ExpenseFeed from '@/components/ExpenseFeed';
 import BudgetTracker from '@/components/BudgetTracker';
@@ -63,6 +64,7 @@ import {
 import { calculateNetBalances, calculateOptimalSettlements } from '@/lib/settlementMath';
 import { animateCounter } from '@/lib/animeAnimations';
 import { safeSetItem, safeGetItem } from '@/lib/storage';
+import { friendlyError } from '@/lib/errorMessages';
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(true);
@@ -99,6 +101,9 @@ export default function Home() {
   const [expenseToEdit, setExpenseToEdit] = useState(null); // editing an existing expense
   const [expenseToDeleteId, setExpenseToDeleteId] = useState(null);
   const [appError, setAppError] = useState(null);
+  // In-form feedback for the expense form (spinner while submitting + inline error banner)
+  const [expenseSubmitting, setExpenseSubmitting] = useState(false);
+  const [expenseFormError, setExpenseFormError] = useState(null);
 
   // Refs for animated numbers
   const totalSpentRef = useRef(null);
@@ -132,7 +137,7 @@ export default function Home() {
       });
 
       const { data: authListener } = supabase.auth.onAuthStateChange(
-        (_event, session) => {
+        async (_event, session) => {
           if (session?.user) {
             const profileObj = {
               id: session.user.id,
@@ -149,7 +154,9 @@ export default function Home() {
               upi_id: session.user.user_metadata?.upi_id || 'naqeeb@upi',
             };
             setUserProfile(profileObj);
-            loadUserData(profileObj.id);
+            // Await the first data fetch so the skeleton stays visible until
+            // the user's trips + expenses are actually rendered.
+            await loadUserData(profileObj.id);
           } else {
             handleUserLoggedOut();
           }
@@ -297,6 +304,7 @@ export default function Home() {
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
+    setExpenseFormError(null);
     const errors = {};
     if (!title || title.trim() === '') {
       errors.title = 'Expense title cannot be empty.';
@@ -325,12 +333,14 @@ export default function Home() {
 
     setFormErrors(errors);
     if (Object.keys(errors).length) {
-      setAppError(Object.values(errors)[0]);
+      // Show the first error as an inline banner INSIDE the form, right where
+      // the user is typing — never as a floating global toast.
+      setExpenseFormError(Object.values(errors)[0]);
       return;
     }
 
     if (!currentTrip) {
-      setAppError('No active trip selected.');
+      setExpenseFormError('No active trip selected. Please choose or create a trip first.');
       return;
     }
 
@@ -346,16 +356,28 @@ export default function Home() {
       addedBy: userProfile?.name || 'Unknown',
     };
 
+    setExpenseSubmitting(true);
+
     // Editing an existing expense → update in place.
     if (expenseToEdit) {
-      await updateExpenseInDb(expenseToEdit.id, currentTrip.id, payload, userProfile?.id);
-      setExpenses((prev) =>
-        prev.map((x) =>
-          String(x.id) === String(expenseToEdit.id) ? { ...x, ...payload } : x
-        )
-      );
-      notify('Expense updated ✏️');
-      resetExpenseForm();
+      try {
+        await updateExpenseInDb(expenseToEdit.id, currentTrip.id, payload, userProfile?.id);
+        setExpenses((prev) =>
+          prev.map((x) =>
+            String(x.id) === String(expenseToEdit.id) ? { ...x, ...payload } : x
+          )
+        );
+        setExpenseFormError(null);
+        notify('Expense updated ✏️');
+        resetExpenseForm();
+      } catch (err) {
+        console.error('Error updating expense:', err);
+        setExpenseFormError(
+          friendlyError(err, 'Something went wrong while saving your changes. Please try again.')
+        );
+      } finally {
+        setExpenseSubmitting(false);
+      }
       return;
     }
 
@@ -365,17 +387,24 @@ export default function Home() {
         userProfile?.id
       );
 
+      if (expenseSubmitting) setExpenseSubmitting(false);
+
       if (!newExp || !newExp.id) {
-        setAppError('Failed to create expense. Please try again.');
+        setExpenseFormError('Could not save this expense to the trip. Please try again.');
         return;
       }
 
       setExpenses([newExp, ...expenses]);
+      setExpenseFormError(null);
       resetExpenseForm();
       notify('Expense added to the split 💸');
     } catch (err) {
       console.error('Error adding expense:', err);
-      setAppError('Error adding expense. Please try again.');
+      setExpenseFormError(
+        friendlyError(err, 'Error adding expense. Your changes were not saved — please try again.')
+      );
+    } finally {
+      setExpenseSubmitting(false);
     }
   };
 
@@ -640,6 +669,24 @@ export default function Home() {
           />
 
           <main className="w-full px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-5 sm:space-y-6">
+            {/* SKELETON LOADER — shown while auth + first data fetch is in flight */}
+            {loadingAuth && (
+              <div aria-busy="true" aria-label="Loading your trips" className="space-y-5">
+                <div className="h-4 w-40 rounded-full bg-slate-200 dark:bg-slate-700 skeleton-shimmer" />
+                {[0, 1, 2].map((idx) => (
+                  <div key={idx} className="flex gap-3 items-start rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 p-4">
+                    <div className="w-11 h-11 rounded-2xl bg-slate-200 dark:bg-slate-700 skeleton-shimmer" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 rounded-full bg-slate-200 dark:bg-slate-700 skeleton-shimmer w-3/5" />
+                      <div className="h-3 rounded-full bg-slate-200 dark:bg-slate-700 skeleton-shimmer w-2/5" />
+                      <div className="h-3 rounded-full bg-slate-200 dark:bg-slate-700 skeleton-shimmer w-full" />
+                    </div>
+                    <div className="w-14 h-4.5 rounded-lg bg-slate-200 dark:bg-slate-700 skeleton-shimmer" />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* GUEST VIEW: If user is logged out and has no trips */}
             {!userProfile && activeTab === 'dashboard' && (
               <motion.div
@@ -786,7 +833,24 @@ export default function Home() {
                         )}
                       </div>
 
-                      <form onSubmit={handleAddExpense} className="space-y-3 sm:space-y-4">
+                        <form onSubmit={handleAddExpense} noValidate className="space-y-3 sm:space-y-4">
+  {expenseFormError && (
+    <div
+      role="alert"
+      className="flex items-start gap-2 px-3 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-medium"
+    >
+      <span className="shrink-0">⚠️</span>
+      <span className="flex-1">{expenseFormError}</span>
+      <button
+        type="button"
+        aria-label="Dismiss"
+        onClick={() => setExpenseFormError(null)}
+        className="shrink-0 ml-auto text-rose-600 dark:text-rose-400 hover:opacity-70"
+      >
+        ✕
+      </button>
+    </div>
+  )}
                         <div>
                           <label className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
                             Expense Title
@@ -981,10 +1045,17 @@ export default function Home() {
 
                         <button
                           type="submit"
-                          className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-3 active:scale-95"
+                          disabled={expenseSubmitting}
+                          className="w-full bg-teal-500 hover:bg-teal-400 disabled:opacity-60 disabled:cursor-not-allowed text-slate-950 font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm transition shadow-md shadow-teal-500/20 flex items-center justify-center gap-2 mt-3 active:scale-95"
                         >
-                          <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2]" />
-                          <span>{expenseToEdit ? 'Save Changes' : 'Add Expense'}</span>
+                          {expenseSubmitting ? (
+                            <Spinner size={16} label="Saving..." />
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2]" />
+                              <span>{expenseToEdit ? 'Save Changes' : 'Add Expense'}</span>
+                            </>
+                          )}
                         </button>
                       </form>
                     </div>
@@ -1005,7 +1076,9 @@ export default function Home() {
                       onEditExpense={startEditExpense}
                       onDeleteExpense={requestDeleteExpense}
                       currentUserName={userProfile?.name || ''}
+                      currentUserId={userProfile?.id || ''}
                       tripCreatorName={currentTrip?.creatorName || currentTrip?.creator_name || ''}
+                      tripCreatorId={currentTrip?.createdBy || ''}
                       getAvatarForMember={getAvatarForMember}
                     />
                   </div>

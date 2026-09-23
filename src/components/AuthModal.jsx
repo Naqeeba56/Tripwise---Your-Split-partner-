@@ -4,12 +4,16 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Sparkles, X, Shield, ArrowRight, Lock } from 'lucide-react';
 import { signInWithGoogle, signInWithOtp, isSupabaseConfigured } from '@/lib/supabase';
+import { friendlyError } from '@/lib/errorMessages';
 
 export default function AuthModal({ isOpen, onClose, onMockLogin }) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  // Field-level message rendered right under the input (never the browser's
+  // native "Please fill out this field." bubble).
+  const [emailError, setEmailError] = useState(null);
 
   if (!isOpen) return null;
 
@@ -34,7 +38,7 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
       const { error } = await signInWithGoogle();
       if (error) throw error;
     } catch (err) {
-      setError(err.message || 'Failed to sign in with Google.');
+      setError(friendlyError(err, 'Failed to sign in with Google. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -42,13 +46,21 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
 
   const handleEmailOtpLogin = async (e) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+    const value = email.trim();
+    if (!value) {
+      setEmailError('Enter your email address to get a magic link.');
+      setError(null);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+      setEmailError('That does not look like a valid email address.');
+      setError(null);
       return;
     }
 
     setLoading(true);
     setError(null);
+    setEmailError(null);
     setMessage(null);
 
     try {
@@ -56,8 +68,8 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
         if (onMockLogin) {
           onMockLogin({
             id: 'user_' + Date.now(),
-            name: email.split('@')[0],
-            email: email,
+            name: value.split('@')[0],
+            email: value,
             avatar: null,
           });
           onClose();
@@ -65,11 +77,11 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
         return;
       }
 
-      const { error } = await signInWithOtp(email);
+      const { error } = await signInWithOtp(value);
       if (error) throw error;
       setMessage('Magic login link sent to your email! Please check your inbox.');
     } catch (err) {
-      setError(err.message || 'Failed to send login link.');
+      setError(friendlyError(err, 'We could not send the login link. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -150,19 +162,32 @@ export default function AuthModal({ isOpen, onClose, onMockLogin }) {
               </span>
             </div>
 
-            <form onSubmit={handleEmailOtpLogin} className="space-y-3">
+            <form onSubmit={handleEmailOtpLogin} noValidate className="space-y-3">
               <div>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     placeholder="name@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition"
-                    required
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError(null);
+                    }}
+                    aria-invalid={Boolean(emailError)}
+                    aria-describedby={emailError ? 'auth-email-error' : undefined}
+                    className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-teal-500 transition ${
+                      emailError ? 'border-rose-500' : 'border-slate-200 dark:border-slate-800'
+                    }`}
                   />
                 </div>
+                {emailError && (
+                  <p id="auth-email-error" className="mt-1.5 text-[11px] font-medium text-rose-500">
+                    {emailError}
+                  </p>
+                )}
               </div>
 
               <button

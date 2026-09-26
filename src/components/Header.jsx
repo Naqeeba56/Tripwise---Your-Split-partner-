@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   UserCircle,
   Coins,
+  Crown,
   MoreHorizontal,
   X,
 } from 'lucide-react';
@@ -187,6 +188,16 @@ export default function Header({
                   <span className="hidden md:inline">Admin</span>
                 </a>
               )}
+
+            <a
+              href="/pro"
+              className="flex items-center justify-center gap-1 w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-2 bg-amber-400/15 text-amber-600 dark:text-amber-500 border border-amber-400/30 hover:bg-amber-400/25 rounded-xl sm:rounded-2xl text-xs font-semibold transition shadow-sm shrink-0"
+              title="Go Pro"
+              aria-label="Go Pro"
+            >
+              <Crown className="w-3.5 h-3.5 stroke-[2]" />
+              <span className="hidden md:inline">Go Pro</span>
+            </a>
 
             <button
               onClick={onOpenNewTripModal}

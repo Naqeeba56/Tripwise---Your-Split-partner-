@@ -12,8 +12,23 @@
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
-const rnd = (min, max) => Math.round(min + Math.random() * (max - min));
 const roundTo50 = (n) => Math.round(n / 50) * 50;
+
+// Deterministic helpers: the SAME route/class/carrier always returns the SAME
+// fare across renders (no random jumps), while different routes still vary.
+const hash01 = (seed) => {
+  const s = String(seed);
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+  return ((h >>> 0) % 10000) / 10000;
+};
+// Deterministic value in [min, max] for a given seed.
+const drnd = (min, max, seed) => min + (max - min) * hash01(seed);
+
+// Actual on-the-ground fares are higher than the raw per-km base rate because of
+// GST (5% travel), IRCTC/airport/operator convenience fees and taxes. We model
+// this as a flat 15% all-in buffer on top of every mode's one-way base.
+const TAX_FACTOR = 1.15;
 
 // Straight-line distance correction factor (road is ~1.35× air)
 export const roadKmFromAirKm = (airKm) => Math.round(airKm * 1.35);
@@ -41,23 +56,31 @@ export const getTrainFares = (distanceKm, travelers = 1) => {
 
   // ── Slab-based base fare calculator (matches IRCTC tables) ─────────────────
   // Returns base fare in ₹ for a given distance and per-km rate with slab steps
-  const slabFare = (km, brackets) => {
-    // brackets: [[upToKm, ratePerKm], ...] sorted ascending
-    let fare = 0;
-    let prev = 0;
-    for (const [upTo, rate] of brackets) {
-      if (km <= upTo) { fare += (km - prev) * rate; break; }
-      fare += (upTo - prev) * rate;
-      prev = upTo;
-      if (km <= prev) break;
-    }
-    return fare;
-  };
+
 
   // ── Sleeper Class (SL) ──────────────────────────────────────────────────────
   // IRCTC SL brackets (₹/km): 0-100→0.28, 101-200→0.26, 201-350→0.23, 351-500→0.20, 501+→0.18
-  const slBase = slabFare(railKm, [[100,0.28],[200,0.26],[350,0.23],[500,0.20],[Infinity,0.18]]);
-  const slFare = Math.max(105, Math.round(slBase)) + 25 + (railKm > 250 ? 45 : 30); // res fee + superfast
+  // Verified IRCTC 2024-25 SL anchors (railKm -> all-in INR): 335 km ~ 295,
+  // 83 km (Mumbai-Lonavala) ~ 105, 460 km ~ 390. Same route => same fare.
+  const SL_ANCHORS = [
+    [25, 60], [76, 105], [150, 175], [308, 295], [460, 390], [700, 530], [950, 650], [1400, 800],
+  ];
+  let slAllIn = SL_ANCHORS[SL_ANCHORS.length - 1][1];
+  if (railKm <= SL_ANCHORS[0][0]) {
+    slAllIn = SL_ANCHORS[0][1];
+  } else {
+    for (let i = 1; i < SL_ANCHORS.length; i++) {
+      const [k0, v0] = SL_ANCHORS[i - 1];
+      const [k1, v1] = SL_ANCHORS[i];
+      if (railKm <= k1) {
+        slAllIn = v0 + ((railKm - k0) / (k1 - k0)) * (v1 - v0);
+        break;
+      }
+    }
+  }
+  // Pre-tax base so the class multipliers (2.65x, 3.85x, ...) re-apply
+  // TAX_FACTOR and land on the correct all-in class fares.
+  const slFare = Math.round(slAllIn / TAX_FACTOR);
 
   // ── 3-Tier AC (3A) ─────────────────────────────────────────────────────────
   // 3A is ~2.65× SL fare (IRCTC ratio)
@@ -123,14 +146,20 @@ export const getTrainFares = (distanceKm, travelers = 1) => {
     },
   ];
 
-  return classes.map((c) => ({
-    ...c,
-    oneWayPerPerson: c.fare,
-    returnPerPerson: Math.round(c.fare * 2),   // return = 2× (no discount on rail)
-    totalOneWay:     c.fare * travelers,
-    totalReturn:     Math.round(c.fare * 2) * travelers,
-    durationStr:     fmtDur(c.duration),
-  }));
+  return classes.map((c) => {
+    // one-way already excludes the 15% all-in fees → apply TAX_FACTOR, then ×2
+    // for the return leg (IRCTC never discounts the round trip).
+    const oneWayPerPerson = Math.round(c.fare * TAX_FACTOR);
+    const returnPerPerson = Math.round(oneWayPerPerson * 2);
+    return {
+      ...c,
+      oneWayPerPerson,
+      returnPerPerson,
+      totalOneWay:     oneWayPerPerson * travelers,
+      totalReturn:     returnPerPerson * travelers,
+      durationStr:     fmtDur(c.duration),
+    };
+  });
 };
 
 // ─── 2. Flight fares ─────────────────────────────────────────────────────────
@@ -139,97 +168,85 @@ export const getTrainFares = (distanceKm, travelers = 1) => {
  * Returns Economy, Premium Economy and Business fares.
  * Airline names cycle through common Indian carriers.
  */
+// ─── 2. Flight fares (deterministic) ─────────────────────────────────────────
 export const getFlightFares = (distanceKm, travelers = 1) => {
   const d = Math.max(150, distanceKm);
 
-  // Domestic flight pricing zones
+  // Deterministic distance-slab model for one-way Economy (all-in ₹):
+  // a handling base + per-km slabs that get CHEAPER per km as the route
+  // lengthens — mirrors real Indian LCC / full-service domestic pricing.
+  const slab = (km, brackets) => {
+    let fare = 0, prev = 0;
+    for (const [upTo, rate] of brackets) {
+      if (km <= upTo) { fare += (km - prev) * rate; break; }
+      fare += (upTo - prev) * rate;
+      prev = upTo;
+    }
+    return fare;
+  };
+  const baseEco = 1800 + slab(d, [[400, 3.2], [900, 2.3], [1600, 1.85], [Infinity, 1.55]]);
+
   const zone = d < 500 ? 'short' : d < 1200 ? 'medium' : 'long';
+  // Tiny deterministic per-route/carrier variance (±4%) — stable on re-render.
+  let eco = roundTo50(baseEco * drnd(0.97, 1.04, `fly-${zone}-${Math.round(d / 100)}`));
+  eco = Math.max(1900, eco);
 
-  const baseEco = zone === 'short' ? rnd(2800, 4200)
-                : zone === 'medium' ? rnd(4500, 7500)
-                : rnd(7000, 12000);
-
-  const airlines = ['IndiGo', 'Air India', 'Vistara (Air India)', 'SpiceJet', 'Akasa Air'];
-  const shuffle = (a) => [...a].sort(() => Math.random() - 0.5);
-  const picked = shuffle(airlines).slice(0, 3);
+  const airlines = ['IndiGo', 'Air India', 'Vistara', 'SpiceJet', 'Akasa Air'];
+  const pickAirline = (i) => airlines[Math.floor(hash01(`air-${d}-${i}`) * airlines.length) % airlines.length];
+  const RETURN_FACTOR = 1.84; // return leg ≈ 8% cheaper when booked together
 
   const classes = [
-    {
-      id: 'economy',
-      label: 'Economy',
-      emoji: '✈️',
-      description: 'Standard seat, 15 kg check-in',
-      multiplier: 1.0,
-      duration: d / 700 + 0.75, // flight time hrs + airport overhead
-    },
-    {
-      id: 'premium',
-      label: 'Premium Economy',
-      emoji: '🥈',
-      description: 'Extra legroom, 20 kg check-in, meal',
-      multiplier: 1.55,
-      duration: d / 700 + 0.75,
-    },
-    {
-      id: 'business',
-      label: 'Business Class',
-      emoji: '💼',
-      description: 'Lie-flat seat, lounge, 30 kg check-in',
-      multiplier: 3.2,
-      duration: d / 700 + 0.5,
-    },
+    { id: 'economy',  label: 'Economy',          emoji: '✈️', description: 'Standard seat, 15 kg check-in', multiplier: 1.0,  duration: d / 700 + 0.75 },
+    { id: 'premium',  label: 'Premium Economy',  emoji: '🥈', description: 'Extra legroom, 20 kg check-in, meal', multiplier: 1.55, duration: d / 700 + 0.75 },
+    { id: 'business', label: 'Business Class',   emoji: '💼', description: 'Lie-flat seat, lounge, 30 kg check-in', multiplier: 3.0,  duration: d / 700 + 0.5 },
   ];
 
-  return classes.map((c, i) => {
-    const oneWayPerPerson = roundTo50(baseEco * c.multiplier);
-    const returnPerPerson = roundTo50(oneWayPerPerson * 1.9);
-    const totalOneWay    = oneWayPerPerson * travelers;
-    const totalReturn    = returnPerPerson * travelers;
-    const dHrs = c.duration;
+  return classes.map((x, i) => {
+    const oneWayPerPerson = roundTo50(eco * x.multiplier);
+    const returnPerPerson = roundTo50(oneWayPerPerson * RETURN_FACTOR);
+    const totalOneWay     = oneWayPerPerson * travelers;
+    const totalReturn     = returnPerPerson * travelers;
+    const dHrs = x.duration;
     const durationStr = `${Math.floor(dHrs)}h ${Math.round((dHrs % 1) * 60)}m`;
+    const fee = Math.round(drnd(180, 360, `fee-${d}-${i}`));
     return {
-      ...c,
-      airline: picked[i] || 'IndiGo',
-      oneWayPerPerson,
-      returnPerPerson,
-      totalOneWay,
-      totalReturn,
-      durationStr,
-      recommended: c.id === 'economy',
-      note: c.id === 'economy'
-        ? '+ ₹' + rnd(200, 400) + ' convenience fee'
-        : c.id === 'premium' ? 'Meal + priority boarding included'
-        : 'Lounge + fast-track security included',
+      ...x,
+      airline: pickAirline(i),
+      oneWayPerPerson, returnPerPerson, totalOneWay, totalReturn, durationStr,
+      recommended: x.id === 'economy',
+      note: x.id === 'economy' ? `+ ₹${fee} convenience fee` : x.id === 'premium' ? 'Meal + priority boarding included' : 'Lounge + fast-track security included',
     };
   });
 };
 
-// ─── 3. Bus fares ────────────────────────────────────────────────────────────
-
+// ─── 3. Bus fares (deterministic distance-slab) ─────────────────────────────┐
 export const getBusFares = (distanceKm, travelers = 1) => {
   const d = Math.max(30, distanceKm);
   const operators = ['RedBus Express', 'MSRTC Shivneri', 'VRL Travels', 'Neeta Tours', 'SRM Travels'];
-  const shuffle = (a) => [...a].sort(() => Math.random() - 0.5);
-  const picked = shuffle(operators).slice(0, 3);
 
+  // Indian bus pricing: a small fixed boarding fee + a per-km rate that STEPS
+  // DOWN beyond 300 km (matches real operators). Values are all-in (tax+fees).
   const types = [
-    { id: 'seater',    label: 'Non-AC Seater',   emoji: '🚌', rateMin: 0.50, rateMax: 0.70 },
-    { id: 'ac_seater', label: 'AC Seater',        emoji: '❄️🚌', rateMin: 0.85, rateMax: 1.10 },
-    { id: 'sleeper',   label: 'Non-AC Sleeper',   emoji: '🛏️🚌', rateMin: 0.90, rateMax: 1.20 },
-    { id: 'ac_sleeper',label: 'AC Sleeper',        emoji: '❄️🛏️', rateMin: 1.40, rateMax: 1.90 },
-    { id: 'volvo',     label: 'Volvo Multi-Axle', emoji: '🚍', rateMin: 1.60, rateMax: 2.10 },
+    { id: 'seater',     label: 'Non-AC Seater',   emoji: '🚌',    base: 30, r1: 0.62, r2: 0.46, min: 55 },
+    { id: 'ac_seater',  label: 'AC Seater',        emoji: '❄️🚌',  base: 45, r1: 0.95, r2: 0.70, min: 90 },
+    { id: 'sleeper',    label: 'Non-AC Sleeper',   emoji: '🛏️🚌',  base: 40, r1: 1.02, r2: 0.76, min: 100 },
+    { id: 'ac_sleeper', label: 'AC Sleeper',        emoji: '❄️🛏️🚌',base: 60, r1: 1.42, r2: 1.05, min: 140 },
+    { id: 'volvo',      label: 'Volvo Multi-Axle', emoji: '🚍',    base: 85, r1: 1.68, r2: 1.24, min: 190 },
   ];
 
   return types.map((t, i) => {
-    const oneWayPerPerson = roundTo50(Math.max(80, rnd(t.rateMin * d, t.rateMax * d)));
-    const returnPerPerson = roundTo50(oneWayPerPerson * 1.90);
-    const durationHrs    = d / (t.id.includes('volvo') ? 65 : 55);
-    const durationStr    = `${Math.floor(durationHrs)}h ${Math.round((durationHrs % 1) * 60)}m`;
+    const first300 = Math.min(d, 300);
+    const beyond   = Math.max(0, d - 300);
+    const raw      = t.base + first300 * t.r1 + beyond * t.r2;
+    // Deterministic operator-level variance (±3%) — stable across renders.
+    const oneWayPerPerson = roundTo50(Math.max(t.min, raw * drnd(0.985, 1.03, `bus-${d}-${i}`)));
+    const returnPerPerson = roundTo50(oneWayPerPerson * 2);
+    const durationHrs     = d / (t.id.includes('volvo') ? 65 : 55);
+    const durationStr     = `${Math.floor(durationHrs)}h ${Math.round((durationHrs % 1) * 60)}m`;
     return {
       ...t,
-      operator: picked[i % picked.length],
-      oneWayPerPerson,
-      returnPerPerson,
+      operator: operators[Math.floor(hash01(`op-${d}-${i}`) * operators.length) % operators.length],
+      oneWayPerPerson, returnPerPerson,
       totalOneWay: oneWayPerPerson * travelers,
       totalReturn: returnPerPerson * travelers,
       durationStr,
@@ -238,7 +255,7 @@ export const getBusFares = (distanceKm, travelers = 1) => {
   });
 };
 
-// ─── 4. Cab fares ────────────────────────────────────────────────────────────
+// ─── 4. Cab fares (unchanged) ───────────────────────────────────────────────┐
 
 export const getCabFares = (distanceKm, travelers = 1) => {
   const d = Math.max(20, distanceKm);

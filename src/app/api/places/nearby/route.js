@@ -47,7 +47,7 @@ export async function GET(request) {
   const typesParam = searchParams.get('types');
   const includedTypes = typesParam
     ? typesParam.split(',').map((t) => t.trim()).filter(Boolean)
-    : ['tourist_attraction', 'historical_landmark', 'museum', 'park', 'natural_feature'];
+    : ['tourist_attraction', 'historical_landmark', 'museum', 'park'];
 
   try {
     const res = await fetch(

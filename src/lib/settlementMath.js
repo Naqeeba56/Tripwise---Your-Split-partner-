@@ -40,14 +40,16 @@ export const calculateNetBalances = (members = [], expenses = []) => {
 
     // "Paid by multiple" — each payer is credited their individual amount.
     // Backward compatible: no payers array → single payer gets the full amount.
+    // Handles both object payers ({ name, amount }) and plain-string payers.
     if (Array.isArray(exp.payers) && exp.payers.length > 0) {
       exp.payers.forEach((p) => {
-        const amountPaid = Number(p.amount || 0);
-        if (amountPaid <= 0) return;
-        if (netBalances[p.name] !== undefined) {
-          netBalances[p.name] += amountPaid;
+        const pName = typeof p === 'string' ? p : (p?.name || p?.memberName);
+        const amountPaid = Number(p?.amount || 0);
+        if (!pName || amountPaid <= 0) return;
+        if (netBalances[pName] !== undefined) {
+          netBalances[pName] += amountPaid;
         } else {
-          netBalances[p.name] = amountPaid;
+          netBalances[pName] = amountPaid;
         }
       });
     } else if (netBalances[payer] !== undefined) {

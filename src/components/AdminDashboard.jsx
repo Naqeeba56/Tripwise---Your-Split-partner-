@@ -31,6 +31,8 @@ import {
   Activity,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { fetchAdminSubscriptions, adminSetSubscriptionStatus, resolveSubscription } from '@/lib/subscription';
+import { fetchAdminUserStats } from '@/lib/admin';
 
 const PIE_COLORS = [
   '#14b8a6',
@@ -88,17 +90,21 @@ export default function AdminDashboard({ user }) {
     //  background refreshes update data silently to avoid flicker)
     setError(null);
     try {
-      const [profiles, trips, expenses, settlements, announcements, membersCount] =
+      const [profiles, trips, expenses, settlements, announcements, membersData] =
         await Promise.all([
           supabase.from('profiles').select('*').order('created_at', { ascending: false }),
           supabase.from('trips').select('*').order('created_at', { ascending: false }),
           supabase.from('expenses').select('*').order('created_at', { ascending: false }),
           supabase.from('settlements').select('*').order('settled_at', { ascending: false }),
           supabase.from('announcements').select('*').order('created_at', { ascending: false }),
-          supabase.from('trip_members').select('id', { count: 'exact', head: true }),
+          supabase.from('trip_members').select('user_id'),
         ]);
+      const subscriptions = await fetchAdminSubscriptions();
+      // True registered count straight from auth.users (falls back to profiles
+      // length when the admin RPC isn't deployed yet).
+      const adminStats = await fetchAdminUserStats();
 
-      const bad = [profiles, trips, expenses, settlements, announcements, membersCount].find(
+      const bad = [profiles, trips, expenses, settlements, announcements, membersData].find(
         (r) => r.error
       );
       if (bad) {
@@ -112,7 +118,10 @@ export default function AdminDashboard({ user }) {
         expenses: expenses.data || [],
         settlements: settlements.data || [],
         announcements: announcements.data || [],
-        membersCount: membersCount.count || 0,
+        membersCount: membersData.data?.length || 0,
+        tripMemberUserIds: (membersData.data || []).map((r) => r.user_id).filter(Boolean),
+        subscriptions,
+        registeredUsers: adminStats?.total ?? (profiles.data?.length || 0),
       });
     } catch (err) {
       console.error('Admin analytics fetch error:', err);
@@ -121,6 +130,14 @@ export default function AdminDashboard({ user }) {
       setLoading(false);
       setLastUpdated(new Date());
     }
+  };
+
+  const resolveProAction = async (userId, status) => {
+    const res = await adminSetSubscriptionStatus(userId, status);
+    if (res.error) {
+      console.warn('Pro action failed:', res.error);
+    }
+    await load();
   };
 
   useEffect(() => {
@@ -230,6 +247,19 @@ const stats = useMemo(() => {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
 
+    // Active users = distinct profiles that have actually engaged with the
+    // platform (created a trip, joined a trip, logged an expense, or posted an
+    // announcement) — as opposed to merely having a registered account.
+    const activeSet = new Set();
+    data.trips.forEach((t) => { if (t.created_by) activeSet.add(t.created_by); });
+    (data.tripMemberUserIds || []).forEach((id) => { if (id) activeSet.add(id); });
+    data.announcements.forEach((a) => {
+      if (a.creator_id) activeSet.add(a.creator_id);
+      if (a.user_id) activeSet.add(a.user_id);
+    });
+    data.expenses.forEach((e) => { if (e.user_id) activeSet.add(e.user_id); });
+    const activeUsers = activeSet.size;
+
     return {
       totalSpent,
       settledAmount,
@@ -238,6 +268,7 @@ const stats = useMemo(() => {
       monthly,
       userGrowth,
       topSpenders,
+      activeUsers,
     };
   }, [data]);
 
@@ -255,7 +286,8 @@ const stats = useMemo(() => {
   if (!data || !stats) return null;
 
   const kpiCards = [
-    { label: 'Registered Users', value: data.profiles.length, sub: 'total accounts', icon: Users, color: 'text-teal-500', bg: 'bg-teal-500/10 border-teal-500/20' },
+    { label: 'Registered Users', value: data.registeredUsers ?? data.profiles.length, sub: 'total verified accounts', icon: Users, color: 'text-teal-500', bg: 'bg-teal-500/10 border-teal-500/20' },
+    { label: 'Active Users', value: stats.activeUsers, sub: Math.round(data.registeredUsers ? (stats.activeUsers / data.registeredUsers * 100) : 0) + '% engaged', icon: Activity, color: 'text-sky-500', bg: 'bg-sky-500/10 border-sky-500/20' },
     { label: 'Active Trips', value: data.trips.length, sub: 'created on platform', icon: PlaneTakeoff, color: 'text-indigo-500', bg: 'bg-indigo-500/10 border-indigo-500/20' },
     { label: 'Expenses Logged', value: data.expenses.length, sub: data.membersCount + ' trip members', icon: Receipt, color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20' },
     { label: 'Amount Spent', value: inr(stats.totalSpent), sub: 'avg ' + inr(Math.round(stats.avgTickets)) + '/trip', icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/20' },
@@ -325,6 +357,65 @@ return (
           );
         })}
       </div>
+
+      {/* Pro subscription approvals */}
+      <Card title="Pro Subscriptions" icon={ShieldCheck}>
+        {data.subscriptions && data.subscriptions.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm">
+              <thead>
+                <tr className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                  <th className="py-2 pr-3">User</th>
+                  <th className="py-2 pr-3">Plan</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3">UPI Txn</th>
+                  <th className="py-2">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.subscriptions.map(function (s) {
+                  const sub = resolveSubscription(s);
+                  const isPending = s.status === 'pending';
+                  return (
+                    <tr key={s.id || s.user_id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                      <td className="py-2 pr-3">
+                        <span className="font-medium text-slate-800 dark:text-slate-100 truncate max-w-[150px]">{s.email || s.user_id}</span>
+                      </td>
+                      <td className="py-2 pr-3 text-slate-500 dark:text-slate-300 capitalize">{s.plan || '—'}{s.amount_paid ? ' · ₹' + Number(s.amount_paid).toLocaleString('en-IN') : ''}</td>
+                      <td className="py-2 pr-3">
+                        <span className={
+                          isPending ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                          : s.status === 'active' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                          : s.status === 'rejected' ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                        } className={'px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap'}>
+                          {isPending ? 'Pending' : sub.label}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-slate-500 dark:text-slate-300 truncate max-w-[140px]">{s.upi_transaction_id || '—'}
+                        {s.coupon_code ? <span className="block text-[9px] text-slate-400">Coupon {s.coupon_code}</span> : null}</td>
+                      <td className="py-2">
+                        {isPending ? (
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => resolveProAction(s.user_id, 'active')}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500/90 text-white text-[10px] font-bold hover:bg-emerald-400 active:scale-95">Approve</button>
+                            <button onClick={() => resolveProAction(s.user_id, 'rejected')}
+                              className="px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-500 text-[10px] font-bold hover:bg-rose-500/25 active:scale-95">Reject</button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400 text-center py-6">No Pro subscriptions yet.</p>
+        )}
+      </Card>
 
       {/* Live users table */}
       <Card title="Live Users" icon={Users}>

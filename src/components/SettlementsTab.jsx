@@ -162,9 +162,28 @@ export default function SettlementsTab({
           {(trip.members || []).map((m, idx) => {
             const memberName = typeof m === 'string' ? m : m.name;
             const avatar = typeof m === 'object' ? (m.avatar_url || m.avatar) : null;
-            const paidTotal = expenses
-              .filter((e) => (e.paidBy || e.payer) === memberName)
-              .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+            // Paid amount = sum of this member's contributions across expenses.
+            // Multi-payer expenses store per-person amounts in `e.payers`; falling back
+            // to the singular `paidBy` when the expense was paid by a single member.
+            const paidTotal = expenses.reduce((sum, e) => {
+              const amt = Number(e.amount || 0);
+              let payers = [];
+              try { payers = Array.isArray(e.payers) ? e.payers : []; } catch { payers = []; }
+              if (payers.length > 0) {
+                const explicit = payers.every((p) => p && typeof p === 'object' && p.amount != null);
+                if (explicit) {
+                  return sum + payers
+                    .filter((p) => (p.name || p.memberName) === memberName)
+                    .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+                }
+                // Payers without per-person amounts → split the total equally.
+                const names = payers.map((p) => (typeof p === 'string' ? p : p.name || p.memberName));
+                return sum + (names.includes(memberName) ? amt / payers.length : 0);
+              }
+              // Single payer
+              const payer = e.paidBy || e.payer;
+              return sum + (payer === memberName ? amt : 0);
+            }, 0);
             const net = Math.round(netBalances[memberName] || 0);
 
             return (

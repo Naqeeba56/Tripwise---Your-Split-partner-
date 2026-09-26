@@ -275,14 +275,18 @@ export const calculateEstimatedBudget = ({
     totalStayCost = roomsNeeded * stayRatePerNight * nights * stayMultiplier;
   }
 
-  // 2. Transport Rates
+  // 2. Transport Rates (flat, used only when no real distance-based fare is
+  // available). Values are round-trip, all-inclusive per person.
   let totalTransportCost = 0;
   switch (travelMode) {
     case 'flight':
-      totalTransportCost = numTravelers * 4500 + 1500;
+      totalTransportCost = numTravelers * (travelStyle === 'luxury' ? 15000 : travelStyle === 'budget' ? 6500 : 9500) + 2000;
       break;
     case 'train':
-      totalTransportCost = numTravelers * (travelStyle === 'luxury' ? 1400 : travelStyle === 'budget' ? 350 : 750) + (numTravelers * 300);
+      totalTransportCost = numTravelers * (travelStyle === 'luxury' ? 3200 : travelStyle === 'budget' ? 700 : 1600) + (numTravelers * 500);
+      break;
+    case 'bus':
+      totalTransportCost = numTravelers * (travelStyle === 'luxury' ? 2600 : travelStyle === 'budget' ? 900 : 1600) + (numTravelers * 300);
       break;
     case 'road':
       totalTransportCost = Math.max(2000, 1800 + numDays * 1200 + (numTravelers > 4 ? 2000 : 0));

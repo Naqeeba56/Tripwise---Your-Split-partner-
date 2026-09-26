@@ -445,6 +445,132 @@ function GemCard({ gem, isLive = false }) {
     </motion.div>
   );
 }
+// ─── TopPickCard ──────────────────────────────────────────────────────────────
+// Featured "Best spot" of the destination. Always shown (never empty): falls back
+// from live Google Places → curated city gems → generic generated spot, so the
+// Spots tab always has a hero pick with image, little details and directions.
+function TopPickCard({ spot }) {
+  if (!spot) return null;
+  const name     = spot.name || spot.displayName?.text || 'Best spot';
+  const desc     = spot.desc || spot.editorialSummary?.text ||
+                   (spot.type ? `${spot.type} near ${spot.city || 'your destination'} — a must-visit stop on your trip.` : '');
+  const type     = spot.type || 'Top Pick';
+  const distance = spot.distance || spot.formattedAddress || '';
+  const rating   = spot.rating;
+  const reviews  = spot.userRatingCount;
+  const imgSrc   = spot.image || spot.photoUrl ||
+                   (spot.photos?.[0]?.name ? getPlacePhotoUrl(spot.photos[0].name, 500, 900) : null);
+  const dirUrl   = spot.directions ||
+                   (spot.location?.latitude && spot.location?.longitude
+                     ? `https://www.google.com/maps/dir/?api=1&destination=${spot.location.latitude},${spot.location.longitude}`
+                     : mapsSearchUrl(name));
+  const mapsUrl  = spot.mapsUrl || mapsSearchUrl(name);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl overflow-hidden border border-teal-500/30 bg-white dark:bg-slate-900 shadow-md group">
+      <div className="relative h-52 overflow-hidden">
+        {imgSrc ? (
+          <img src={imgSrc} alt={name} loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+        ) : (
+          <div className="w-full h-full bg-teal-500/10 flex items-center justify-center">
+            <MapPin className="w-10 h-10 text-teal-500" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
+        <div className="absolute top-2 left-2">
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-400/90 text-slate-950">⭐ Best Spot in {spot.city || ''}</span>
+        </div>
+        <div className="absolute bottom-2 left-3 right-3">
+          <p className="text-base font-extrabold text-white leading-tight">{name}</p>
+          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-white/90">
+            <span className="px-1.5 py-0.5 rounded-full bg-white/15">{type}</span>
+            {rating && <span className="flex items-center gap-0.5"><Star className="w-3 h-3 fill-amber-400 text-amber-400" />{Number(rating).toFixed(1)}</span>}
+            {reviews && <span>({Number(reviews).toLocaleString()})</span>}
+          </div>
+        </div>
+      </div>
+      <div className="p-3.5 space-y-2">
+        {distance && <p className="text-[10px] text-slate-400 truncate flex items-center gap-1"><MapPin className="w-3 h-3 shrink-0" />{distance}</p>}
+        {desc && <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{desc}</p>}
+        <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400"><span>🕙</span>Best visited early morning or late afternoon to beat crowds</p>
+        <div className="flex gap-2.5">
+          <a href={dirUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[11px] font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/25 px-2.5 py-1.5 rounded-lg hover:bg-teal-500/20">
+            <Navigation className="w-3 h-3" />Directions
+          </a>
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 border border-blue-500/20 px-2.5 py-1.5 rounded-lg">
+            <Map className="w-3 h-3" />Open in Maps
+          </a>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// Pick the single best spot: prefer the highest-rated live Google place, then the
+// first curated city gem, then a generic generated one — guaranteed non-empty.
+function pickTopSpot({ liveAttr, offlineGems, toCity }) {
+  if (liveAttr && liveAttr.length) {
+    const ranked = [...liveAttr].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+    const a = ranked[0];
+    return {
+      name: a.displayName?.text, city: toCity,
+      desc: a.editorialSummary?.text, type: (a.types || ['attraction'])[0]?.replace(/_/g, ' '),
+      rating: a.rating, userRatingCount: a.userRatingCount,
+      distance: a.formattedAddress,
+      photos: a.photos, location: a.location,
+      mapsUrl: a.googleMapsUri,
+    };
+  }
+  if (offlineGems && offlineGems.length) {
+    const g = offlineGems[0];
+    return { ...g, city: toCity };
+  }
+  const punch = toCity || 'your destination';
+  return {
+    name: `Iconic Landmark of ${punch}`, city: toCity,
+    type: 'Must Visit', distance: 'City center',
+    desc: `The most recognised landmark in ${punch} — a great first stop for photos, local food and getting your bearings.`,
+    image: `https://picsum.photos/seed/${punch.replace(/\s+/g, '-').toLowerCase()}/900/600`,
+    directions: mapsSearchUrl(punch),
+  };
+}
+
+const mapsSearchUrl = (name) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name || 'place')}`;
+
+// Build a day-wise itinerary from the discovered spots + curated gems when the
+// destination has no pre-written itinerary. Groups ~2 spots/day, pads with
+// tried-and-true activity templates, capped at 4 days. Shape matches
+// destData.itinerary ({ day, title, activities[] }) so the Itinerary tab can
+// render it with the exact same day-card UI.
+function buildDayItinerary({ days, toCity, liveAttr = [], offlineGems = [] }) {
+  const city = toCity || 'your destination';
+  const n = Math.max(1, Math.min(Number(days) || 1, 4));
+  const spots = [
+    ...(Array.isArray(liveAttr) ? liveAttr.map((p) => p?.displayName?.text) : []),
+    ...(Array.isArray(offlineGems) ? offlineGems.map((g) => g?.name) : []),
+  ].filter(Boolean);
+  const uniq = [...new Set(spots)];
+  return Array.from({ length: n }, (_, i) => {
+    const daySpots = uniq.slice(i * 2, i * 2 + 2);
+    const activities = [];
+    if (daySpots[0]) {
+      activities.push(
+        `Start at ${daySpots[0]}${daySpots[1] ? `, then head to ${daySpots[1]}` : ''} — mornings are best for photos and fewer crowds`
+      );
+    } else {
+      activities.push(`Kick off with breakfast and a relaxed walk through ${city}'s market or old-town lane`);
+    }
+    activities.push(`Lunch at a top-rated local eatery in ${city} (street food keeps it budget-friendly)`);
+    activities.push(`Golden-hour sightseeing and a sunset viewpoint near ${city} to round off the day`);
+    if (i === 0 && uniq.length) activities.push(`Evening: local food street or a cosy café hangout in ${city}`);
+    return { day: i + 1, title: i === 0 ? `Arrival & Highlights of ${city}` : `Day ${i + 1}: Explore ${city} Deeper`, activities, spots: daySpots };
+  });
+}
 
 // ─── LivePlaceCard ────────────────────────────────────────────────────────────
 function LivePlaceCard({ place }) {
@@ -508,8 +634,50 @@ function OptimizedBudgetPanel({ distanceKm, travelers, days, travelStyle, curren
     { icon: '🔑', tip: `Check Airbnb for private homes in ${toCity} — often 30% cheaper.` },
   ];
 
+  // ── Location-aware recommendations tailored to the destination ─────────────
+  const bestMode = filtered[0]?.mode || currentMode || 'train';
+  const locRecs = useMemo(() => {
+    const city = toCity?.trim() || 'your destination';
+    const near = distanceKm && distanceKm < 400;
+    const byMode = {
+      flight: `Book ${city} flights 3–6 weeks ahead and travel mid-week — fly-in rates drop 20–30%.`,
+      train: `For ${city}, train is usually the cheapest — prefer early-morning or overnight departures to keep ${near ? 'short' : 'long'} hops budget-friendly.`,
+      bus: `Volvo/Night buses to ${city} are the value pick — lock in seats early as last-minute AC fares jump.`,
+      bike: `Self-driving to ${city}? Fill fuel before city limits and carry a FASTag for ${city} toll booths.`,
+      cab: `For ${city}, hire a cab for the full day vs per-ride — daily rentals undercut metered fares ~40%.`,
+      selfdrive: `${city} is best explored on your own wheels — plan fuel stops and parking ahead to skip surprises.`,
+      road: `Driving to ${city}: take state highways over the expressway to cut tolls when time allows.`,
+    }[bestMode] || `For the ${city} route, compare combo fares to trim transport costs.`;
+
+    return [
+      { icon: '📍', title: `Best season for ${city}`, text: `Check ${city}'s festival and weather calendar — shoulder-season visits cut hotel + flight costs by 25–35%.` },
+      { icon: '🧭', title: 'Getting around', text: byMode },
+      { icon: '🍽️', title: `Local food in ${city}`, text: `Try the street-food core of ${city} — tastiest and cheapest — while booking one nice local dining night for the experience.` },
+      { icon: '🛏️', title: `Where to stay in ${city}`, text: near ? `Keep accommodation central in ${city} — shorter daily commutes pay for themselves.` : `${city} is far, so book nearer the station/airport — saves money and travel fatigue.` },
+      { icon: '💡', title: 'Smart tip', text: `Group the ${travelStyle} spend for ${city} by the day to catch 10% buffer cushioning rather than one big outlay.` },
+    ];
+  }, [toCity, bestMode, currentMode, distanceKm, travelStyle, filtered]);
+
   return (
     <div className="space-y-4">
+      {/* ── Location-aware recommendation cards ── */}
+      <div className="bg-gradient-to-br from-teal-500/10 via-sky-500/5 to-transparent border border-teal-500/25 rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
+        <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <Route className="w-4 h-4 text-teal-500" />Optimized for {toCity || 'your destination'}
+          <span className="text-[9px] font-bold text-teal-600 bg-teal-500/15 px-2 py-0.5 rounded-full ml-auto">AI-POWERED</span>
+        </h4>
+        <div className="space-y-2.5">
+          {locRecs.map((r, i) => (
+            <div key={i} className="flex items-start gap-2.5 rounded-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-3">
+              <span className="text-base leading-none mt-0.5">{r.icon}</span>
+              <div>
+                <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">{r.title}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{r.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
         <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
           <TrendingDown className="w-4 h-4 text-emerald-500" />All Available Modes — Cheapest First
@@ -1319,17 +1487,31 @@ export default function BudgetEstimator({ onStartTripWithBudget }) {
               {/* ── Tab: Nearby Attractions ── */}
               {activeTab === 'attractions' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+                  {/* Featured Best Spot of the destination (never empty) */}
+                  <div>
+                    <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-1.5 px-0.5 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />Featured — {toCity || 'Top pick'}
+                    </p>
+                    <TopPickCard spot={pickTopSpot({ liveAttr, offlineGems, toCity })} />
+                  </div>
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
                     <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <Compass className="w-4 h-4 text-teal-500" />Top Attractions near {toCity}
+                      <Compass className="w-4 h-4 text-teal-500" />More to explore near {toCity}
                       {placesLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-500 ml-auto" />}
                     </h4>
-                    {liveAttr.length > 0 ? (
+                    {liveAttr.length > 0 && (
                       <div className="space-y-2.5">{liveAttr.map((a, i) => <LivePlaceCard key={a.id || i} place={a} />)}</div>
-                    ) : !placesLoading ? (
-                      <p className="text-xs text-slate-400 text-center py-4">No attractions found yet.</p>
-                    ) : (
+                    )}
+                    {!liveAttr.length && offlineGems && offlineGems.length ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {offlineGems.slice(0, 6).map((gem, i) => <GemCard key={i} gem={gem} isLive={false} />)}
+                      </div>
+                    ) : null}
+                    {!liveAttr.length && placesLoading && (
                       <div className="space-y-2.5">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />)}</div>
+                    )}
+                    {!liveAttr.length && !placesLoading && (!offlineGems || !offlineGems.length) && (
+                      <p className="text-xs text-slate-400 text-center py-4">No attractions found yet.</p>
                     )}
                   </div>
                 </motion.div>
@@ -1337,39 +1519,136 @@ export default function BudgetEstimator({ onStartTripWithBudget }) {
 
               {/* ── Tab: Optimize ── */}
               {activeTab === 'optimize' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                   <OptimizedBudgetPanel distanceKm={distKm} travelers={numT} days={days}
                     travelStyle={travelStyle} currentMode={travelMode} toCity={toCity} availableModes={availModes} />
+
+                  {/* Optimized day-by-day itinerary suggestion */}
+                  {(() => {
+                    const plan = buildDayItinerary({ days, toCity, liveAttr, offlineGems });
+                    return plan.length ? (
+                      <div className="bg-gradient-to-br from-indigo-500/10 via-teal-500/5 to-transparent border border-indigo-500/25 rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-indigo-500" />Optimized {days > 1 ? `${plan.length}-day` : 'Day'} Plan for {toCity}
+                          </h4>
+                          <button onClick={() => setActiveTab('itinerary')}
+                            className="flex items-center gap-1 text-[11px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 border border-teal-500/25 px-2.5 py-1.5 rounded-lg hover:bg-teal-500/20 transition">
+                            Open full itinerary <CalendarDays className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {plan.map((d) => (
+                            <div key={d.day} className="flex items-start gap-3 rounded-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-3">
+                              <span className="w-6 h-6 rounded-full bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">{d.day}</span>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{d.title}</p>
+                                <ul className="mt-1 space-y-0.5">
+                                  {d.activities.slice(0, 3).map((a, i) => (
+                                    <li key={i} className="text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
+                                      <span className="text-indigo-500 mt-0.5">•</span><span className="line-clamp-1">{a}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {/* Location-aware ideas & recommendations for the chosen destination */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
+                    <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />Best of {toCity} — Ideas &amp; Recommendations
+                    </h4>
+
+                    {(destData?.bestSeason || destData?.weather) && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {destData.bestSeason && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"><CalendarDays className="w-3 h-3 inline mr-1" />Best: {destData.bestSeason}</span>}
+                        {destData.weather && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20"><CloudSun className="w-3 h-3 inline mr-1" />{destData.weather}</span>}
+                      </div>
+                    )}
+
+                    {offlineGems && offlineGems.length ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {offlineGems.slice(0, 3).map((gem, i) => <GemCard key={i} gem={gem} isLive={false} />)}
+                      </div>
+                    ) : null}
+
+                    {destData?.hiddenGems?.length ? (
+                      <div className="rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
+                        <p className="text-[10px] font-bold uppercase text-teal-600 dark:text-teal-400">💎 Hidden Gems</p>
+                        {destData.hiddenGems.slice(0, 4).map((h, i) => (
+                          <div key={i} className="flex gap-2">
+                            <span className="text-teal-500 flex-shrink-0">▸</span>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300"><span className="font-semibold">{h.name}.</span> {h.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {destData?.recommendedStays?.length ? (
+                      <div className="rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
+                        <p className="text-[10px] font-bold uppercase text-teal-600 dark:text-teal-400">🏨 Recommended Stays</p>
+                        {destData.recommendedStays.slice(0, 3).map((r, i) => (
+                          <div key={i} className="flex items-start justify-between gap-2">
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug"><span className="font-semibold">{r.name}</span> <span className="text-slate-400">· {r.type}</span></p>
+                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">₹{fmt(r.pricePerNight)}/nt</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </motion.div>
               )}
 
               {/* ── Tab: Itinerary ── */}
               {activeTab === 'itinerary' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-                  {destData?.itinerary?.length > 0 ? destData.itinerary.map((day) => (
-                    <div key={day.day} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-sm space-y-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-teal-500 text-slate-950 font-bold text-xs flex items-center justify-center">{day.day}</span>
-                        <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{day.title}</h4>
-                      </div>
-                      <ul className="space-y-1.5 pl-2">
-                        {day.activities.map((act, i) => (
-                          <li key={i} className="text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                            <span className="text-teal-500 font-medium mt-0.5">•</span><span>{act}</span>
-                          </li>
+                  {(() => {
+                    const plan = destData?.itinerary?.length
+                      ? destData.itinerary
+                      : buildDayItinerary({ days, toCity, liveAttr, offlineGems });
+                    if (!plan.length) {
+                      return (
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm text-center space-y-2">
+                          <p className="text-xs text-slate-400">No itinerary in database for <strong>{toCity}</strong>.</p>
+                          <a href={`https://www.google.com/travel/trips?destination=${encodeURIComponent(toCity)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+                            <ExternalLink className="w-3.5 h-3.5" />Plan on Google Travel
+                          </a>
+                        </div>
+                      );
+                    }
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 px-0.5">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                            {destData?.itinerary?.length ? 'Curated itinerary' : 'AI-optimized itinerary from local spots'}
+                          </p>
+                        </div>
+                        {plan.map((day) => (
+                          <div key={day.day} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-sm space-y-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-teal-500 text-slate-950 font-bold text-xs flex items-center justify-center">{day.day}</span>
+                              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{day.title}</h4>
+                            </div>
+                            <ul className="space-y-1.5 pl-2">
+                              {day.activities.map((act, i) => (
+                                <li key={i} className="text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                                  <span className="text-teal-500 font-medium mt-0.5">•</span><span>{act}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         ))}
-                      </ul>
-                    </div>
-                  )) : (
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm text-center space-y-2">
-                      <p className="text-xs text-slate-400">No itinerary in database for <strong>{toCity}</strong>.</p>
-                      <a href={`https://www.google.com/travel/trips?destination=${encodeURIComponent(toCity)}`}
-                        target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">
-                        <ExternalLink className="w-3.5 h-3.5" />Plan on Google Travel
-                      </a>
-                    </div>
-                  )}
+                      </>
+                    );
+                  })()}
                   {destData?.tips && (
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-4 shadow-sm space-y-2">
                       <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">

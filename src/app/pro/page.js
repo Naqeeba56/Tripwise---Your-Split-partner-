@@ -10,11 +10,8 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
   PRO_PRICE, TRIAL_DAYS, getMySubscription, ensureProTrial,
   getCouponInfo, submitProPayment, resolveSubscription,
+  fetchPaymentSettings, DEFAULT_PAYMENT_SETTINGS,
 } from '@/lib/subscription';
-
-// ── App UPI details — REPLACE with your actual UPI id / name ────────────────
-const APP_UPI_ID = 'tripwise@upi';
-const APP_UPI_NAME = 'Tripwise';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
 
@@ -34,15 +31,18 @@ export default function ProPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  // Admin-editable payment/bank details (from app_settings). Fall back to the
+  // built-in defaults until the async load resolves.
+  const [settings, setSettings] = useState({ ...DEFAULT_PAYMENT_SETTINGS });
 
   const payable = coupon?.discountedPrice ?? PRO_PRICE;
   const [qrDataUrl, setQrDataUrl] = useState('');
 
   // Standard UPI intent + per-app deep links pre-filled with the exact amount.
-  const upiPayUri  = `upi://pay?pa=${encodeURIComponent(APP_UPI_ID)}&pn=${encodeURIComponent(APP_UPI_NAME)}&am=${payable}&cu=INR&tn=${encodeURIComponent('Tripwise Pro')}`;
-  const gpayUri    = `intent://pay?pa=${encodeURIComponent(APP_UPI_ID)}&pn=${encodeURIComponent(APP_UPI_NAME)}&am=${payable}&cu=INR&tn=Tripwise%20Pro#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end;`;
-  const phonepeUri = `intent://pay?pa=${encodeURIComponent(APP_UPI_ID)}&pn=${encodeURIComponent(APP_UPI_NAME)}&am=${payable}&cu=INR&tn=Tripwise%20Pro#Intent;scheme=upi;package=com.phonepe.app;end;`;
-  const paytmUri   = `intent://pay?pa=${encodeURIComponent(APP_UPI_ID)}&pn=${encodeURIComponent(APP_UPI_NAME)}&am=${payable}&cu=INR&tn=Tripwise%20Pro#Intent;scheme=upi;package=net.one97.paytm;end;`;
+  const upiPayUri  = `upi://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(settings.upi_name)}&am=${payable}&cu=INR&tn=${encodeURIComponent('Tripwise Pro')}`;
+  const gpayUri    = `intent://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(settings.upi_name)}&am=${payable}&cu=INR&tn=Tripwise%20Pro#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end;`;
+  const phonepeUri = `intent://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(settings.upi_name)}&am=${payable}&cu=INR&tn=Tripwise%20Pro#Intent;scheme=upi;package=com.phonepe.app;end;`;
+  const paytmUri   = `intent://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(settings.upi_name)}&am=${payable}&cu=INR&tn=Tripwise%20Pro#Intent;scheme=upi;package=net.one97.paytm;end;`;
 
   // Generate the scannable QR while the paying panel is open.
   useEffect(() => {
@@ -57,8 +57,12 @@ export default function ProPage() {
   const load = async (u) => {
     if (!u?.id) return;
     await ensureProTrial(u.id, u.email);
-    const s = await getMySubscription(u.id);
+    const [s, pset] = await Promise.all([
+      getMySubscription(u.id),
+      fetchPaymentSettings(),
+    ]);
     setSub(s);
+    setSettings(pset);
     setRes(resolveSubscription(s));
   };
 
@@ -83,15 +87,15 @@ export default function ProPage() {
 
   const applyCoupon = async () => {
     setCouponMsg('');
-    const info = await getCouponInfo(couponCode);
-    if (!info) { setCoupon(null); setCouponMsg('Invalid or inactive coupon code.'); return; }
+    const info = await getCouponInfo(couponCode, user?.email || '');
+    if (!info) { setCoupon(null); setCouponMsg('Invalid, inactive, or not eligible for this account.'); return; }
     setCoupon(info);
     setCouponMsg(`Applied — ${info.discountPct}% off on Pro.`);
   };
 
   const copyUpi = async () => {
     try {
-      await navigator.clipboard.writeText(APP_UPI_ID);
+      await navigator.clipboard.writeText(settings.upi_id);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch { /* ignore */ }
@@ -106,6 +110,7 @@ export default function ProPage() {
       upiTransactionId: upiTid,
       couponCode: coupon?.code || '',
       amountPaid: payable,
+      userEmail: user.email || '',
     });
     setBusy(false);
     if (result.error) { setMessage(result.error); return; }
@@ -269,12 +274,23 @@ export default function ProPage() {
 
                   <div className="flex items-center justify-between rounded-xl bg-slate-100 dark:bg-slate-900 border border-teal-500/30 px-3 py-2.5">
                     <div className="flex items-center gap-1.5"><Wallet className="w-4 h-4 text-teal-500" />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{APP_UPI_ID}</span>
-                      <span className="text-[10px] text-slate-400">({APP_UPI_NAME})</span></div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{settings.upi_id}</span>
+                      <span className="text-[10px] text-slate-400">({settings.upi_name})</span></div>
                     <button onClick={copyUpi} className="flex items-center gap-1 text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline">
                       {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}{copied ? 'Copied' : 'Copy'}
                     </button>
                   </div>
+                  {(settings && (settings.bank_name || settings.account_holder || settings.account_number || settings.ifsc)) && (
+                    <div className="rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 space-y-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                      {settings.bank_name && <p className="font-semibold text-slate-600 dark:text-slate-300">{settings.bank_name}</p>}
+                      {settings.account_holder && <p>A/c: {settings.account_holder}</p>}
+                      <p>
+                        {settings.account_number && <span>A/c No: {settings.account_number}</span>}
+                        {settings.account_number && settings.ifsc && <span> · </span>}
+                        {settings.ifsc && <span>IFSC: {settings.ifsc}</span>}
+                      </p>
+                    </div>
+                  )}
                   <input value={upiTid} onChange={(e) => setUpiTid(e.target.value)}
                     placeholder="UPI transaction id / UTR number"
                     className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs" />

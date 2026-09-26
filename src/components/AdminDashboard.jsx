@@ -29,9 +29,19 @@ import {
   RefreshCw,
   Calendar,
   Activity,
+  Landmark,
+  Tag,
+  Plus,
+  Trash2,
+  Power,
+  Save,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { fetchAdminSubscriptions, adminSetSubscriptionStatus, resolveSubscription } from '@/lib/subscription';
+import {
+  fetchAdminSubscriptions, adminSetSubscriptionStatus, resolveSubscription,
+  fetchPaymentSettings, updatePaymentSettings,
+  fetchAdminCoupons, upsertCoupon, deleteCoupon,
+} from '@/lib/subscription';
 import { fetchAdminUserStats } from '@/lib/admin';
 
 const PIE_COLORS = [
@@ -59,6 +69,11 @@ const fmtDate = (iso) => {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const inputCls =
+  'w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 ' +
+  'rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 ' +
+  'focus:outline-none focus:border-teal-500 transition';
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const ChartTooltip = ({ active, payload, label }) => {
@@ -85,6 +100,15 @@ export default function AdminDashboard({ user }) {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  // Admin-editable payment/bank details + coupon management
+  const [paymentSettings, setPaymentSettings] = useState(null);
+  const [settingsMsg, setSettingsMsg] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [coupons, setCoupons] = useState([]);
+  const [couponMsg, setCouponMsg] = useState('');
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponForm, setCouponForm] = useState({ code: '', discountPct: '', label: '', userEmail: '', maxUses: '' });
+
   const load = async () => {
     // (no setLoading here — the full-screen spinner only shows on first load,
     //  background refreshes update data silently to avoid flicker)
@@ -100,6 +124,14 @@ export default function AdminDashboard({ user }) {
           supabase.from('trip_members').select('user_id'),
         ]);
       const subscriptions = await fetchAdminSubscriptions();
+      // Admin-managed payment settings + coupons (loaded outside the Promise.all
+      // because they are separate non-analytics resources).
+      const [ps, cs] = await Promise.all([
+        fetchPaymentSettings(),
+        fetchAdminCoupons(),
+      ]);
+      setPaymentSettings(ps);
+      setCoupons(cs);
       // True registered count straight from auth.users (falls back to profiles
       // length when the admin RPC isn't deployed yet).
       const adminStats = await fetchAdminUserStats();
@@ -137,6 +169,47 @@ export default function AdminDashboard({ user }) {
     if (res.error) {
       console.warn('Pro action failed:', res.error);
     }
+    await load();
+  };
+
+  const onSettingChange = (key, value) => {
+    setPaymentSettings((prev) => ({ ...(prev || {}), [key]: value }));
+  };
+
+  const savePaymentSettings = async () => {
+    if (!paymentSettings) return;
+    setSaving(true);
+    setSettingsMsg('');
+    const res = await updatePaymentSettings(paymentSettings);
+    setSaving(false);
+    setSettingsMsg(res.error ? `Failed: ${res.error}` : 'Payment & bank details saved.');
+    if (!res.error) await load();
+  };
+
+  const handleCreateCoupon = async () => {
+    setCouponBusy(true);
+    setCouponMsg('');
+    const res = await upsertCoupon(couponForm);
+    setCouponBusy(false);
+    if (res.error) { setCouponMsg(`Failed: ${res.error}`); return; }
+    setCouponMsg('Coupon created.');
+    setCouponForm({ code: '', discountPct: '', label: '', userEmail: '', maxUses: '' });
+    await load();
+  };
+
+  const handleToggleCoupon = async (c) => {
+    const res = await upsertCoupon({
+      id: c.id, code: c.code, discountPct: c.discount_pct, label: c.label,
+      userEmail: c.user_email, maxUses: c.max_uses, active: !c.active,
+    });
+    if (res.error) setCouponMsg(`Failed: ${res.error}`);
+    await load();
+  };
+
+  const handleDeleteCoupon = async (c) => {
+    if (!window.confirm(`Delete coupon ${c.code}?`)) return;
+    const res = await deleteCoupon(c.id);
+    if (res.error) { setCouponMsg(`Failed: ${res.error}`); return; }
     await load();
   };
 
@@ -415,6 +488,117 @@ return (
         ) : (
           <p className="text-sm text-slate-400 text-center py-6">No Pro subscriptions yet.</p>
         )}
+      </Card>
+
+      {/* Payment & Bank details — shown to paying users on /pro */}
+      <Card title="Payment & Bank Details" icon={Landmark}>
+        {paymentSettings ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase">UPI ID (pay-to)
+                <input value={paymentSettings.upi_id || ''} onChange={(e) => onSettingChange('upi_id', e.target.value)}
+                  placeholder="name@bank" className={inputCls} />
+              </label>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase">Payee / UPI Name
+                <input value={paymentSettings.upi_name || ''} onChange={(e) => onSettingChange('upi_name', e.target.value)}
+                  placeholder="Tripwise" className={inputCls} />
+              </label>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase">Bank Name
+                <input value={paymentSettings.bank_name || ''} onChange={(e) => onSettingChange('bank_name', e.target.value)}
+                  placeholder="e.g. HDFC Bank" className={inputCls} />
+              </label>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase">Account Holder
+                <input value={paymentSettings.account_holder || ''} onChange={(e) => onSettingChange('account_holder', e.target.value)}
+                  placeholder="Full name" className={inputCls} />
+              </label>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase">Account Number
+                <input value={paymentSettings.account_number || ''} onChange={(e) => onSettingChange('account_number', e.target.value)}
+                  placeholder="A/c number" className={inputCls} />
+              </label>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase">IFSC Code
+                <input value={paymentSettings.ifsc || ''} onChange={(e) => onSettingChange('ifsc', e.target.value)}
+                  placeholder="e.g. HDFC0001234" className={inputCls} />
+              </label>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] text-slate-400">Users pay to this UPI id on the Pro checkout page.</p>
+              <button onClick={savePaymentSettings} disabled={saving}
+                className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold disabled:opacity-60">
+                {saving ? <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-950 border-t-transparent animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Save Details
+              </button>
+            </div>
+            {settingsMsg && <p className="text-[11px] text-teal-600 dark:text-teal-400">{settingsMsg}</p>}
+          </div>
+        ) : (
+          <div className="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+        )}
+      </Card>
+
+      {/* Coupon management — create single-user / promo discount codes */}
+      <Card title="Coupons" icon={Tag}>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            <input value={couponForm.code} onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+              placeholder="CODE e.g. VIP20" className={inputCls} />
+            <input value={couponForm.discountPct} onChange={(e) => setCouponForm({ ...couponForm, discountPct: e.target.value })}
+              placeholder="Discount % (0–100)" type="number" min="0" max="100" className={inputCls} />
+            <input value={couponForm.label} onChange={(e) => setCouponForm({ ...couponForm, label: e.target.value })}
+              placeholder="Label (optional)" className={inputCls} />
+            <input value={couponForm.userEmail} onChange={(e) => setCouponForm({ ...couponForm, userEmail: e.target.value })}
+              placeholder="Single-user email (optional)" className={inputCls} />
+            <input value={couponForm.maxUses} onChange={(e) => setCouponForm({ ...couponForm, maxUses: e.target.value })}
+              placeholder="Max uses (optional)" type="number" min="1" className={inputCls} />
+            <button onClick={handleCreateCoupon} disabled={couponBusy}
+              className="flex items-center justify-center gap-1.5 bg-emerald-500/90 hover:bg-emerald-400 text-white text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-60">
+              {couponBusy ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Plus className="w-3.5 h-3.5" />}Add Coupon
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400">Leave “Single-user email” empty for a public promo code, or set it to give the discount to one user only.</p>
+          {couponMsg && <p className="text-[11px] text-teal-600 dark:text-teal-400">{couponMsg}</p>}
+          {coupons.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                    <th className="py-2 pr-3">Code</th>
+                    <th className="py-2 pr-3">%</th>
+                    <th className="py-2 pr-3">Target</th>
+                    <th className="py-2 pr-3">Used</th>
+                    <th className="py-2">Status / Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coupons.map(function (c) {
+                    return (
+                      <tr key={c.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                        <td className="py-2 pr-3">
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{c.code}</span>
+                          {c.label ? <span className="block text-[10px] text-slate-400">{c.label}</span> : null}
+                        </td>
+                        <td className="py-2 pr-3 text-teal-600 dark:text-teal-400 font-semibold">{Number(c.discount_pct || 0)}%</td>
+                        <td className="py-2 pr-3 text-slate-500 dark:text-slate-300">{c.user_email || 'Everyone'}</td>
+                        <td className="py-2 pr-3 text-slate-400">{Number(c.used_count || 0)}{c.max_uses ? ` / ${c.max_uses}` : ''}</td>
+                        <td className="py-2">
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => handleToggleCoupon(c)}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold ${c.active ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'}`}>
+                              <Power className="w-3 h-3" />{c.active ? 'Active' : 'Paused'}
+                            </button>
+                            <button onClick={() => handleDeleteCoupon(c)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/15 text-rose-500 text-[10px] font-bold"><Trash2 className="w-3 h-3" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 text-center py-4">No coupons yet.</p>
+          )}
+        </div>
       </Card>
 
       {/* Live users table */}

@@ -11,6 +11,54 @@ export const TRIAL_DAYS = 15;
 
 export const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
+// ─── Payment / bank settings (admin-editable, stored in app_settings) ─────────
+// Keys mirror the app_settings table seeded by admin_payments_and_coupons.sql.
+// Defaults keep /pro working even before the migration runs or when Supabase is
+// not configured.
+export const DEFAULT_PAYMENT_SETTINGS = {
+  upi_id:         'tripwise@upi',
+  upi_name:       'Tripwise',
+  bank_name:      '',
+  account_holder: '',
+  account_number: '',
+  ifsc:           '',
+};
+export const PAYMENT_SETTING_KEYS = Object.keys(DEFAULT_PAYMENT_SETTINGS);
+
+/** Read the admin-editable payment/bank settings (falls back to defaults). */
+export const fetchPaymentSettings = async () => {
+  if (!isSupabaseConfigured()) return { ...DEFAULT_PAYMENT_SETTINGS };
+  try {
+    const { data, error } = await supabase.from('app_settings').select('key,value');
+    if (error || !data) return { ...DEFAULT_PAYMENT_SETTINGS };
+    const out = { ...DEFAULT_PAYMENT_SETTINGS };
+    (data || []).forEach((r) => { if (r && r.key in out) out[r.key] = r.value || ''; });
+    return out;
+  } catch {
+    return { ...DEFAULT_PAYMENT_SETTINGS };
+  }
+};
+
+/** Admin only (RLS enforces via public.is_admin()): persist payment settings. */
+export const updatePaymentSettings = async (patch) => {
+  if (!isSupabaseConfigured()) return { error: 'Not configured' };
+  const entries = Object.entries(patch || {})
+    .filter(([k]) => PAYMENT_SETTING_KEYS.includes(k));
+  if (!entries.length) return { error: 'No valid settings to update' };
+  try {
+    const rows = entries.map(([key, value]) => ({
+      key,
+      value: String(value ?? ''),
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await supabase
+      .from('app_settings').upsert(rows, { onConflict: 'key' });
+    return error ? { error: error.message } : { ok: true };
+  } catch (e) {
+    return { error: e.message || 'Failed to save settings' };
+  }
+};
+
 /** Fetch the current user's subscription row (or null). */
 export const getMySubscription = async (userId) => {
   if (!isSupabaseConfigured() || !isUuid(userId)) return null;
@@ -46,17 +94,26 @@ export const ensureProTrial = async (userId, email) => {
   }
 };
 
-/** Return coupon info + discounted price, or null when the code is invalid. */
-export const getCouponInfo = async (code) => {
+/** Return coupon info + discounted price, or null when the code is invalid.
+ *  When a coupon has a `user_email` (single-user code) it is only valid for that
+ *  matching (case-insensitive) signed-in email. */
+export const getCouponInfo = async (code, userEmail = '') => {
   if (!isSupabaseConfigured() || !code) return null;
   try {
     const { data, error } = await supabase
       .from('coupons').select('*').eq('code', String(code).trim().toUpperCase())
       .eq('active', true).maybeSingle();
     if (error || !data) return null;
+    const owner = (data.user_email || '').trim().toLowerCase();
+    if (owner) {
+      // Single-user coupon: must match the signed-in email (and we need one).
+      if (!userEmail) return null;
+      if (owner !== String(userEmail).trim().toLowerCase()) return null;
+    }
     const discountPct = Number(data.discount_pct || 0);
     return {
       ...data,
+      userEmail: data.user_email || '',
       discountPct,
       discountedPrice: Math.max(0, Math.round(PRO_PRICE * (1 - discountPct / 100))),
     };
@@ -70,7 +127,7 @@ export const getCouponInfo = async (code) => {
  * UPI transaction id (and optional coupon). Status flips to 'pending' for the
  * admin to verify. Owners can never set status to 'active' (RLS enforces it).
  */
-export const submitProPayment = async (userId, { upiTransactionId, couponCode = '', amountPaid = 0 }) => {
+export const submitProPayment = async (userId, { upiTransactionId, couponCode = '', amountPaid = 0, userEmail = '' }) => {
   if (!isSupabaseConfigured() || !isUuid(userId)) return { error: 'Not configured' };
   const tid = (upiTransactionId || '').trim();
   if (!tid) return { error: 'UPI transaction id is required.' };
@@ -78,8 +135,8 @@ export const submitProPayment = async (userId, { upiTransactionId, couponCode = 
   let discountPct = 0;
   let storedCoupon = (couponCode || '').trim().toUpperCase();
   if (storedCoupon) {
-    const info = await getCouponInfo(storedCoupon);
-    if (!info) return { error: 'Invalid or inactive coupon code.' };
+    const info = await getCouponInfo(storedCoupon, userEmail);
+    if (!info) return { error: 'Invalid, inactive, or not eligible coupon code.' };
     discountPct = info.discountPct;
   } else {
     storedCoupon = '';
@@ -161,5 +218,62 @@ export const adminSetSubscriptionStatus = async (userId, status, notes) => {
     return { ok: data === true };
   } catch (e) {
     return { error: e.message || 'RPC failed' };
+  }
+};
+
+/** Admin: list all coupons (for the dashboard management panel). */
+export const fetchAdminCoupons = async () => {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('coupons').select('*').order('created_at', { ascending: false });
+    return error ? [] : (data || []);
+  } catch {
+    return [];
+  }
+};
+
+/** Admin only (RLS): create a new coupon or update an existing one by id.
+ *  Passing `userEmail` restricts the code to a single user. */
+export const upsertCoupon = async (coupon) => {
+  if (!isSupabaseConfigured()) return { error: 'Not configured' };
+  const code = String(coupon?.code || '').trim().toUpperCase();
+  if (!code) return { error: 'Coupon code is required.' };
+  if (!/^[A-Z0-9_-]+$/.test(code)) {
+    return { error: 'Use only letters, numbers, - or _ (uppercase letters/numbers).' };
+  }
+  const discountPct = Math.max(0, Math.min(100, Number(coupon?.discountPct)));
+  if (Number.isNaN(discountPct)) return { error: 'Enter a valid discount percent (0–100).' };
+  try {
+    const payload = {
+      code,
+      discount_pct: discountPct,
+      label: String(coupon?.label || '').trim(),
+      user_email: String(coupon?.userEmail || '').trim().toLowerCase() || null,
+      max_uses:
+        coupon?.maxUses != null && coupon.maxUses !== ''
+          ? Number(coupon.maxUses)
+          : null,
+      active: coupon?.active !== false,
+    };
+    const { data, error } = coupon?.id
+      ? await supabase.from('coupons').update(payload).eq('id', coupon.id)
+          .select().single()
+      : await supabase.from('coupons').insert(payload).select().single();
+    if (error) return { error: error.message };
+    return { ok: true, data };
+  } catch (e) {
+    return { error: e.message || 'Failed to save coupon' };
+  }
+};
+
+/** Admin only (RLS): delete a coupon by id. */
+export const deleteCoupon = async (id) => {
+  if (!isSupabaseConfigured() || !id) return { error: 'Missing coupon id' };
+  try {
+    const { error } = await supabase.from('coupons').delete().eq('id', id);
+    return error ? { error: error.message } : { ok: true };
+  } catch (e) {
+    return { error: e.message || 'Failed to delete coupon' };
   }
 };
